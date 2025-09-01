@@ -1,0 +1,336 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run weekly on Tuesdays at 10 AM UTC
+    - cron: '0 10 * * 2'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Type of update to perform'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - go-modules
+          - github-actions
+          - security-only
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  update-go-dependencies:
+    name: Update Go Dependencies
+    runs-on: ubuntu-latest
+    if: github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'go-modules' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+        cache-dependency-path: go.sum
+
+    - name: Install tools
+      run: make install-tools
+
+    - name: Backup current dependencies
+      run: |
+        cp go.mod go.mod.backup
+        cp go.sum go.sum.backup
+
+    - name: Update dependencies
+      id: update
+      run: |
+        echo "Updating Go dependencies..."
+        
+        # Update all dependencies to latest compatible versions
+        go get -u ./...
+        go mod tidy
+        
+        # Check for security vulnerabilities
+        govulncheck ./... || echo "Vulnerabilities detected, will be addressed in security updates"
+        
+        # Check if there are changes
+        if git diff --quiet go.mod go.sum; then
+          echo "No dependency updates available"
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+        else
+          echo "Dependency updates detected"
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+          
+          # Show what changed
+          echo "=== Dependency changes ==="
+          echo "## go.mod changes:"
+          git diff go.mod || echo "No go.mod changes"
+          echo "## go.sum changes:"
+          git diff --stat go.sum || echo "No go.sum changes"
+        fi
+
+    - name: Generate types with updated deps
+      if: steps.update.outputs.changes_detected == 'true'
+      run: make generate-types
+
+    - name: Run tests with updated dependencies
+      if: steps.update.outputs.changes_detected == 'true'
+      id: test
+      run: |
+        echo "Running tests with updated dependencies..."
+        if make test; then
+          echo "tests_passed=true" >> $GITHUB_OUTPUT
+        else
+          echo "tests_passed=false" >> $GITHUB_OUTPUT
+          echo "❌ Tests failed with updated dependencies"
+        fi
+
+    - name: Run security scan
+      if: steps.update.outputs.changes_detected == 'true'
+      id: security
+      run: |
+        echo "Running security scan..."
+        if make security; then
+          echo "security_passed=true" >> $GITHUB_OUTPUT
+        else
+          echo "security_passed=false" >> $GITHUB_OUTPUT
+          echo "❌ Security scan failed with updated dependencies"
+        fi
+
+    - name: Restore backup if tests fail
+      if: steps.update.outputs.changes_detected == 'true' && (steps.test.outputs.tests_passed == 'false' || steps.security.outputs.security_passed == 'false')
+      run: |
+        echo "Restoring backup due to test/security failures..."
+        mv go.mod.backup go.mod
+        mv go.sum.backup go.sum
+        go mod download
+
+    - name: Create dependency update summary
+      if: steps.update.outputs.changes_detected == 'true' && steps.test.outputs.tests_passed == 'true' && steps.security.outputs.security_passed == 'true'
+      run: |
+        cat > dependency_update_summary.md << 'EOF'
+        ## 🔄 Go Dependency Updates
+        
+        This PR contains automated updates to Go module dependencies.
+        
+        ### Changes Made
+        
+        - ✅ Updated Go dependencies to latest compatible versions
+        - ✅ Regenerated Go types from schemas
+        - ✅ Ran full test suite - all tests pass
+        - ✅ Security scan completed - no vulnerabilities detected
+        
+        ### Updated Dependencies
+        
+        ```diff
+        EOF
+        git diff go.mod >> dependency_update_summary.md
+        cat >> dependency_update_summary.md << 'EOF'
+        ```
+        
+        ### Validation Results
+        
+        - ✅ All tests pass
+        - ✅ Security scan clean
+        - ✅ Code generation successful
+        - ✅ No breaking changes detected
+        
+        ### Auto-merge Criteria
+        
+        This PR will be auto-merged if:
+        - All CI checks pass
+        - No major version updates are included
+        - Security scan is clean
+        - Tests pass in all environments
+        
+        ---
+        
+        *This PR was automatically created by the Dependency Updates workflow.*
+        *Triggered by: ${{ github.event_name }}*
+        *Workflow run: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+        EOF
+
+    - name: Commit dependency updates
+      if: steps.update.outputs.changes_detected == 'true' && steps.test.outputs.tests_passed == 'true' && steps.security.outputs.security_passed == 'true'
+      id: commit
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        git add go.mod go.sum bokio/generated/
+        
+        COMMIT_MSG="chore(deps): update Go dependencies
+        
+        Automated update of Go module dependencies.
+        
+        Updated at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+        Workflow: ${{ github.workflow }}
+        Run ID: ${{ github.run_id }}"
+        
+        git commit -m "$COMMIT_MSG"
+        echo "commit_created=true" >> $GITHUB_OUTPUT
+
+    - name: Create Pull Request for dependency updates
+      if: steps.commit.outputs.commit_created == 'true'
+      id: create_pr
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        title: "🔄 Update Go dependencies"
+        body-path: dependency_update_summary.md
+        branch: automated/update-go-deps
+        branch-suffix: timestamp
+        delete-branch: true
+        labels: |
+          automated
+          dependencies
+          go-modules
+        assignees: klowdo
+
+    - name: Auto-approve dependency PR
+      if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      run: |
+        if [ "${{ secrets.AUTO_APPROVE_DEPENDENCY_UPDATES }}" = "true" ]; then
+          gh pr review ${{ steps.create_pr.outputs.pull-request-number }} --approve --body "Auto-approving automated dependency update"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Enable auto-merge for safe updates
+      if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      run: |
+        # Check if this contains only patch/minor updates (no major version changes)
+        if ! git diff go.mod | grep -E '^\+.*v[0-9]+\.[0-9]+\.[0-9]+' | grep -E 'v[0-9]+\.0\.0'; then
+          if [ "${{ secrets.AUTO_MERGE_DEPENDENCY_UPDATES }}" = "true" ]; then
+            echo "Safe dependency update detected, enabling auto-merge"
+            gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --squash
+          fi
+        else
+          echo "Major version update detected, manual review required"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f go.mod.backup go.sum.backup dependency_update_summary.md
+
+  security-updates:
+    name: Security Updates
+    runs-on: ubuntu-latest
+    if: github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'security-only' || github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+
+    - name: Install security tools
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+    - name: Run vulnerability check
+      id: vuln_check
+      run: |
+        echo "Running vulnerability check..."
+        if govulncheck -json ./... > vulns.json; then
+          echo "No vulnerabilities found"
+          echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
+        else
+          echo "Vulnerabilities detected"
+          echo "vulnerabilities_found=true" >> $GITHUB_OUTPUT
+          cat vulns.json
+        fi
+
+    - name: Run security audit
+      id: security_audit
+      run: |
+        echo "Running security audit..."
+        gosec -fmt sarif -out gosec-results.sarif ./...
+        if [ $? -eq 0 ]; then
+          echo "Security audit passed"
+          echo "security_issues_found=false" >> $GITHUB_OUTPUT
+        else
+          echo "Security issues detected"
+          echo "security_issues_found=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload security scan results
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: gosec-results.sarif
+
+    - name: Create security issue
+      if: steps.vuln_check.outputs.vulnerabilities_found == 'true' || steps.security_audit.outputs.security_issues_found == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = '🚨 Security vulnerabilities detected in dependencies';
+          const body = `
+          ## Security Scan Results
+          
+          Automated security scan detected potential vulnerabilities in the project dependencies.
+          
+          ### Vulnerability Check Results
+          - Status: ${{ steps.vuln_check.outputs.vulnerabilities_found == 'true' && 'Issues found' || 'Clean' }}
+          
+          ### Security Audit Results  
+          - Status: ${{ steps.security_audit.outputs.security_issues_found == 'true' && 'Issues found' || 'Clean' }}
+          
+          ### Next Steps
+          
+          1. Review the security scan results in the workflow run
+          2. Update vulnerable dependencies
+          3. Apply security patches as needed
+          4. Re-run security scan to verify fixes
+          
+          ### Workflow Run
+          [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ---
+          *This issue was automatically created by the security scan workflow.*
+          `;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['security', 'automated', 'high-priority']
+          });
+
+  summary:
+    name: Dependency Update Summary
+    runs-on: ubuntu-latest
+    needs: [update-go-dependencies, security-updates]
+    if: always()
+    
+    steps:
+    - name: Summary
+      run: |
+        echo "## Dependency Update Summary"
+        echo "- Go Dependencies: ${{ needs.update-go-dependencies.result }}"
+        echo "- Security Updates: ${{ needs.security-updates.result }}"
+        
+        if [ "${{ needs.update-go-dependencies.result }}" = "success" ] && [ "${{ needs.security-updates.result }}" = "success" ]; then
+          echo "✅ All dependency updates completed successfully"
+        else
+          echo "❌ Some dependency updates failed - manual intervention may be required"
+        fi

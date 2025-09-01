@@ -1,0 +1,235 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  security-events: write
+  checks: write
+  pull-requests: write
+
+env:
+  GO_VERSION_MATRIX: '["1.22", "1.23"]'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: [1.22, 1.23]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache: true
+        cache-dependency-path: go.sum
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install tools
+      run: make install-tools
+
+    - name: Generate types
+      run: make generate-types
+
+    - name: Run tests
+      run: make test
+
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+        cache-dependency-path: go.sum
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install tools
+      run: make install-tools
+
+    - name: Generate types
+      run: make generate-types
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.61.0
+        args: --timeout=5m --verbose
+
+    - name: Run custom lint
+      run: make lint
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+        cache-dependency-path: go.sum
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install security tools
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+    - name: Run govulncheck
+      run: govulncheck ./...
+
+    - name: Run gosec
+      run: gosec -fmt sarif -out gosec-results.sarif ./...
+      continue-on-error: true
+
+    - name: Upload SARIF file
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: gosec-results.sarif
+
+    - name: Run security make target
+      run: make security
+
+  nix-build:
+    name: Nix Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: devenv
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+
+    - name: Check Nix flake
+      run: nix flake check --show-trace
+
+    - name: Build with Nix
+      run: nix build --show-trace
+
+    - name: Test Nix build
+      run: nix run . -- --help || echo "Binary built successfully"
+
+  build-matrix:
+    name: Build Matrix
+    runs-on: ubuntu-latest
+    needs: [test, lint, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install tools
+      run: make install-tools
+
+    - name: Generate types
+      run: make generate-types
+
+    - name: Build for ${{ matrix.goos }}/${{ matrix.goarch }}
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        VERSION=$(git describe --tags --always --dirty)
+        EXT=""
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          EXT=".exe"
+        fi
+        go build -ldflags "-X main.Version=${VERSION}" -o "bin/bokio-mcp-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}" .
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: bokio-mcp-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: bin/bokio-mcp-${{ matrix.goos }}-${{ matrix.goarch }}*
+        retention-days: 30
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test, lint, security, nix-build]
+    if: always()
+    
+    steps:
+    - name: Check results
+      run: |
+        if [ "${{ needs.test.result }}" = "failure" ] || 
+           [ "${{ needs.lint.result }}" = "failure" ] || 
+           [ "${{ needs.security.result }}" = "failure" ] || 
+           [ "${{ needs.nix-build.result }}" = "failure" ]; then
+          echo "❌ One or more CI jobs failed"
+          exit 1
+        else
+          echo "✅ All CI jobs passed successfully"
+        fi

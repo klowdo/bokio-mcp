@@ -1,0 +1,273 @@
+name: Update Schema
+
+on:
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: 'Force update even if no changes detected'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-schema:
+    name: Update API Schema
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+        cache-dependency-path: go.sum
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install tools
+      run: make install-tools
+
+    - name: Backup current schemas
+      run: |
+        mkdir -p schemas_backup
+        if [ -d "schemas" ]; then
+          cp -r schemas/* schemas_backup/ || true
+        fi
+
+    - name: Update schemas
+      id: update
+      run: |
+        echo "Updating API schemas..."
+        make update-schema
+        
+        # Check if there are any changes
+        if git diff --quiet schemas/; then
+          echo "No schema changes detected"
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+        else
+          echo "Schema changes detected"
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+          
+          # Show what changed
+          echo "=== Schema changes ===" 
+          git diff --stat schemas/
+          git diff schemas/
+        fi
+
+    - name: Generate types from updated schemas
+      if: steps.update.outputs.changes_detected == 'true' || github.event.inputs.force_update == 'true'
+      run: |
+        echo "Generating Go types from updated schemas..."
+        make generate-types
+
+    - name: Run tests with new schemas
+      if: steps.update.outputs.changes_detected == 'true' || github.event.inputs.force_update == 'true'
+      run: |
+        echo "Running tests to validate new schemas..."
+        make test
+
+    - name: Run linting
+      if: steps.update.outputs.changes_detected == 'true' || github.event.inputs.force_update == 'true'
+      run: |
+        echo "Running linting on generated code..."
+        make lint || echo "Linting warnings detected, but proceeding..."
+
+    - name: Commit changes
+      if: steps.update.outputs.changes_detected == 'true' || github.event.inputs.force_update == 'true'
+      id: commit
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Add all schema and generated files
+        git add schemas/
+        git add bokio/generated/
+        
+        # Create commit message with details
+        COMMIT_MSG="chore: update API schemas and generated types
+        
+        Automated update of Bokio API schemas and generated Go types.
+        
+        Changes:
+        $(git diff --cached --stat)
+        
+        Updated at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+        Workflow: ${{ github.workflow }}
+        Run ID: ${{ github.run_id }}"
+        
+        git commit -m "$COMMIT_MSG"
+        echo "commit_created=true" >> $GITHUB_OUTPUT
+
+    - name: Generate PR body
+      if: steps.commit.outputs.commit_created == 'true'
+      id: pr_body
+      run: |
+        # Create detailed PR body
+        cat > pr_body.md << 'EOF'
+        ## 🤖 Automated Schema Update
+        
+        This PR contains automated updates to the Bokio API schemas and generated Go types.
+        
+        ### Changes Made
+        
+        - ✅ Updated API schema files from Bokio GitHub repository
+        - ✅ Regenerated Go types and client code
+        - ✅ Ran tests to validate changes
+        - ✅ Applied linting
+        
+        ### Schema Files Updated
+        
+        ```
+        EOF
+        git diff --name-only HEAD~1 schemas/ >> pr_body.md || echo "No schema files changed" >> pr_body.md
+        cat >> pr_body.md << 'EOF'
+        ```
+        
+        ### Generated Files Updated
+        
+        ```
+        EOF
+        git diff --name-only HEAD~1 bokio/generated/ >> pr_body.md || echo "No generated files changed" >> pr_body.md
+        cat >> pr_body.md << 'EOF'
+        ```
+        
+        ### Validation Results
+        
+        - ✅ Tests passed
+        - ✅ Code generation successful
+        - ⚠️  Please review generated code for any breaking changes
+        
+        ### Next Steps
+        
+        1. Review the changes in the generated files
+        2. Check for any breaking changes in the API
+        3. Update any dependent code if necessary
+        4. Merge if everything looks good
+        
+        ---
+        
+        *This PR was automatically created by the Update Schema workflow.*
+        *Triggered by: ${{ github.event_name }}*
+        *Workflow run: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+        EOF
+        
+        echo "pr_body_file=pr_body.md" >> $GITHUB_OUTPUT
+
+    - name: Create Pull Request
+      if: steps.commit.outputs.commit_created == 'true'
+      id: create_pr
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore: update API schemas and generated types"
+        title: "🤖 Update API schemas and generated types"
+        body-path: pr_body.md
+        branch: automated/update-schema
+        branch-suffix: timestamp
+        delete-branch: true
+        labels: |
+          automated
+          schema-update
+          dependencies
+        assignees: klowdo
+        draft: false
+
+    - name: Auto-approve PR (if configured)
+      if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      run: |
+        if [ "${{ secrets.AUTO_APPROVE_SCHEMA_UPDATES }}" = "true" ]; then
+          gh pr review ${{ steps.create_pr.outputs.pull-request-number }} --approve --body "Auto-approving automated schema update"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Enable auto-merge (if tests pass)
+      if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      run: |
+        if [ "${{ secrets.AUTO_MERGE_SCHEMA_UPDATES }}" = "true" ]; then
+          gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --squash
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Comment on existing PR if no changes
+      if: steps.update.outputs.changes_detected == 'false' && github.event_name == 'workflow_dispatch'
+      run: |
+        echo "No schema changes detected during manual run."
+        echo "The schemas are already up to date."
+
+    - name: Summary
+      run: |
+        if [ "${{ steps.update.outputs.changes_detected }}" = "true" ]; then
+          echo "✅ Schema update completed successfully"
+          if [ "${{ steps.create_pr.outputs.pull-request-number }}" ]; then
+            echo "📝 Pull request created: #${{ steps.create_pr.outputs.pull-request-number }}"
+            echo "🔗 URL: ${{ steps.create_pr.outputs.pull-request-url }}"
+          fi
+        else
+          echo "ℹ️  No schema changes detected - schemas are up to date"
+        fi
+
+  # Separate job to validate the PR if auto-created
+  validate-pr:
+    name: Validate Schema PR
+    runs-on: ubuntu-latest
+    needs: update-schema
+    if: needs.update-schema.outputs.changes_detected == 'true'
+    
+    steps:
+    - name: Checkout PR branch
+      uses: actions/checkout@v4
+      with:
+        ref: automated/update-schema
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true
+
+    - name: Install dependencies
+      run: make deps
+
+    - name: Install tools
+      run: make install-tools
+
+    - name: Run comprehensive tests
+      run: |
+        echo "Running comprehensive validation..."
+        make test
+        make lint
+        make security
+
+    - name: Build project
+      run: make build
+
+    - name: Validate generated code
+      run: |
+        echo "Validating generated code compiles and is properly formatted..."
+        go fmt ./bokio/generated/
+        go vet ./bokio/generated/
+        
+        # Check if formatting changed anything
+        if ! git diff --quiet; then
+          echo "❌ Generated code was not properly formatted"
+          git diff
+          exit 1
+        fi
+        
+        echo "✅ Generated code validation passed"

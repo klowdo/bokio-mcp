@@ -1,6 +1,6 @@
 # Pre-commit configuration for Bokio MCP Server
 # This configuration integrates with the existing Makefile and respects Go 1.24 tool directives
-# For NixOS users: Install pre-commit via: nix-shell -p pre-commit --run "pre-commit install"
+# For NixOS users: Install pre-commit via: nix develop
 # Or use the Nix development environment: nix develop
 
 repos:

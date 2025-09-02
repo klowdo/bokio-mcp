@@ -72,6 +72,21 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to register customer tools: %w", err)
 	}
 
+	// Register item management tools using generated clients
+	if err := tools.RegisterItemTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register item tools: %w", err)
+	}
+
+	// Register invoice management tools using generated clients
+	if err := tools.RegisterInvoiceTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register invoice tools: %w", err)
+	}
+
+	// Register upload management tools using generated clients
+	if err := tools.RegisterUploadTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register upload tools: %w", err)
+	}
+
 	// TODO: Migrate remaining tools to use generated clients
 	// The old tools used manual types that don't exist in the actual API schema
 	// They need to be rewritten to use the generated client methods and types

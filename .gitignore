@@ -38,9 +38,6 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
-# Generated files
-bokio/generated/
-
 # Nix result symlinks
 result
 result-*

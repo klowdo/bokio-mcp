@@ -15,7 +15,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
 
       buildInputs = with pkgs; [
-        go_1_23
+        go_1_24
         gotools
         gopls
         delve

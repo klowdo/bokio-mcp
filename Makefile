@@ -91,22 +91,9 @@ endef
 # Tool Installation
 # =============================================================================
 
-install-tools: ## Install required development tools
-	$(call print_status,"Installing development tools...")
-	@if ! command -v go >/dev/null 2>&1; then \
-		$(call print_error,"Go is not installed. Please install Go 1.21+ first."); \
-		exit 1; \
-	fi
-	@$(call print_status,"Installing oapi-codegen $(OAPI_CODEGEN_VERSION)...")
-	@go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION)
-	@$(call print_status,"Installing golangci-lint $(GOLANGCI_LINT_VERSION)...")
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	@$(call print_status,"Installing goreleaser $(GORELEASER_VERSION)...")
-	@go install github.com/goreleaser/goreleaser@$(GORELEASER_VERSION)
-	@$(call print_status,"Installing security tools...")
-	@go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
-	@go install github.com/securecodewarrior/gosec/v2/cmd/gosec@$(GOSEC_VERSION)
-	$(call print_success,"All development tools installed successfully")
+install-tools: ## Download Go tools (not needed - using go run instead)
+	$(call print_warning,"This target is deprecated. Tools are now run directly with 'go run'")
+	$(call print_success,"No installation needed - tools run directly with go run")
 
 # =============================================================================
 # Schema Management
@@ -136,27 +123,26 @@ update-schema: ## Download latest OpenAPI specs from Bokio GitHub
 	fi
 	$(call print_success,"API specifications downloaded to $(SCHEMAS_DIR)/")
 
-generate-types: update-schema ## Generate Go types from OpenAPI specifications using oapi-codegen
-	$(call check_command,oapi-codegen)
+generate-types: update-schema ## Generate Go types from OpenAPI specifications using go tool
 	$(call print_status,"Generating Go types from OpenAPI specs...")
 	@mkdir -p $(GENERATED_DIR)
 	@$(call print_status,"Generating types for company API...")
-	@if ! oapi-codegen -package generated -generate types "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company_types.go"; then \
+	@if ! go tool oapi-codegen -package generated -generate types "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company_types.go"; then \
 		$(call print_error,"Failed to generate company types"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Generating types for general API...")
-	@if ! oapi-codegen -package generated -generate types "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general_types.go"; then \
+	@if ! go tool oapi-codegen -package generated -generate types "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general_types.go"; then \
 		$(call print_error,"Failed to generate general types"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Generating client for company API...")
-	@if ! oapi-codegen -package generated -generate client "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company_client.go"; then \
+	@if ! go tool oapi-codegen -package generated -generate client "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company_client.go"; then \
 		$(call print_error,"Failed to generate company client"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Generating client for general API...")
-	@if ! oapi-codegen -package generated -generate client "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general_client.go"; then \
+	@if ! go tool oapi-codegen -package generated -generate client "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general_client.go"; then \
 		$(call print_error,"Failed to generate general client"); \
 		exit 1; \
 	fi
@@ -213,14 +199,13 @@ test: ## Run all tests with coverage reporting
 		$(call print_status,"Coverage report: coverage.html"); \
 	fi
 
-lint: ## Run golangci-lint for code quality analysis
-	$(call check_command,golangci-lint)
+lint: ## Run golangci-lint for code quality analysis using go tool
 	$(call print_status,"Running code quality checks...")
 	@$(call print_status,"Checking golangci-lint configuration...")
 	@if [ ! -f ".golangci.yml" ] && [ ! -f ".golangci.yaml" ]; then \
 		$(call print_warning,"No golangci-lint config found, using defaults"); \
 	fi
-	@if ! golangci-lint run ./...; then \
+	@if ! go tool golangci-lint run ./...; then \
 		$(call print_error,"Linting failed"); \
 		exit 1; \
 	fi
@@ -282,17 +267,15 @@ deps: ## Update and verify Go dependencies
 # Security
 # =============================================================================
 
-security: ## Run comprehensive security scans
-	$(call check_command,govulncheck)
-	$(call check_command,gosec)
+security: ## Run comprehensive security scans using go tool
 	$(call print_status,"Running security scans...")
 	@$(call print_status,"Checking for known vulnerabilities...")
-	@if ! govulncheck ./...; then \
+	@if ! go tool govulncheck ./...; then \
 		$(call print_error,"Vulnerability check failed"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Running static security analysis...")
-	@if ! gosec -quiet ./...; then \
+	@if ! go tool gosec -quiet ./...; then \
 		$(call print_error,"Security analysis found issues"); \
 		exit 1; \
 	fi
@@ -302,19 +285,18 @@ security: ## Run comprehensive security scans
 # Release Management
 # =============================================================================
 
-release-dry: ## Test GoReleaser configuration without publishing
-	$(call check_command,goreleaser)
+release-dry: ## Test GoReleaser configuration without publishing using go tool
 	$(call print_status,"Testing release configuration...")
 	@if [ ! -f ".goreleaser.yml" ] && [ ! -f ".goreleaser.yaml" ]; then \
 		$(call print_error,"No GoReleaser configuration found"); \
 		exit 1; \
 	fi
-	@if ! goreleaser check; then \
+	@if ! go tool goreleaser check; then \
 		$(call print_error,"GoReleaser configuration is invalid"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Running dry-run release...")
-	@if ! goreleaser release --snapshot --clean --skip=publish; then \
+	@if ! go tool goreleaser release --snapshot --clean --skip=publish; then \
 		$(call print_error,"Release dry-run failed"); \
 		exit 1; \
 	fi
@@ -376,14 +358,13 @@ tag: ## Create and push a new tag (usage: make tag VERSION=v1.0.0)
 	@git push origin $(VERSION)
 	$(call print_success,"Tag $(VERSION) created and pushed")
 
-release: ## Create a new release (requires tag to be pushed)
-	$(call check_command,goreleaser)
+release: ## Create a new release (requires tag to be pushed) using go tool
 	$(call print_status,"Creating release...")
 	@if [ ! -f ".goreleaser.yml" ] && [ ! -f ".goreleaser.yaml" ]; then \
 		$(call print_error,"No GoReleaser configuration found"); \
 		exit 1; \
 	fi
-	@if ! goreleaser release --clean; then \
+	@if ! go tool goreleaser release --clean; then \
 		$(call print_error,"Release failed"); \
 		exit 1; \
 	fi

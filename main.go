@@ -59,30 +59,30 @@ func run(ctx context.Context) error {
 
 	// Create MCP server
 	server := mcp.NewServer(serverName, serverVersion, nil)
-	
+
 	// Register tools with the server
 	if err := tools.RegisterAuthTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register auth tools: %w", err)
 	}
-	
+
 	if err := tools.RegisterInvoiceTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register invoice tools: %w", err)
 	}
-	
+
 	if err := tools.RegisterCustomerTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register customer tools: %w", err)
 	}
-	
+
 	if err := tools.RegisterJournalTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register journal tools: %w", err)
 	}
-	
+
 	if err := tools.RegisterUploadTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register upload tools: %w", err)
 	}
 
-	slog.Info("Starting Bokio MCP server", 
-		"name", serverName, 
+	slog.Info("Starting Bokio MCP server",
+		"name", serverName,
 		"version", serverVersion,
 		"bokio_base_url", config.BokioConfig.BaseURL,
 		"read_only_mode", config.ReadOnly)
@@ -102,7 +102,7 @@ type Config struct {
 func loadConfig() (*Config, error) {
 	// Parse read-only mode
 	readOnly := os.Getenv("BOKIO_READ_ONLY") == "true"
-	
+
 	bokioConfig := bokio.Config{
 		BaseURL:      getEnvWithDefault("BOKIO_BASE_URL", "https://api.bokio.se"),
 		ClientID:     os.Getenv("BOKIO_CLIENT_ID"),

@@ -1,7 +1,7 @@
 # Bokio MCP Server Makefile
 # Development automation for the Bokio MCP server project
 # Supports full development lifecycle from schema updates to releases
-.PHONY: help update-schema generate-types build test lint dev clean deps security release-dry nix-build pre-commit install-tools run watch tag release info status profile benchmark format check-deps
+.PHONY: help update-schema generate-types build test lint dev clean deps security release-dry nix-build pre-commit pre-commit-install pre-commit-run pre-commit-update install-tools run watch tag release info status profile benchmark format check-deps
 
 # Set shell and enable error checking
 SHELL := $(shell which bash)
@@ -331,6 +331,42 @@ pre-commit: deps lint test security ## Run comprehensive pre-commit checks
 	@$(call print_status,"Verifying build...")
 	@make build >/dev/null
 	$(call print_success,"All pre-commit checks passed! ✨")
+
+pre-commit-install: ## Install pre-commit git hooks
+	$(call print_status,"Installing pre-commit hooks...")
+	@if ! command -v pre-commit >/dev/null 2>&1; then \
+		$(call print_error,"pre-commit is not installed. Use 'nix develop' or install manually."); \
+		exit 1; \
+	fi
+	@if ! pre-commit install; then \
+		$(call print_error,"Failed to install pre-commit hooks"); \
+		exit 1; \
+	fi
+	$(call print_success,"Pre-commit hooks installed successfully")
+
+pre-commit-run: ## Run pre-commit hooks on all files
+	$(call print_status,"Running pre-commit hooks on all files...")
+	@if ! command -v pre-commit >/dev/null 2>&1; then \
+		$(call print_error,"pre-commit is not installed. Use 'nix develop' or install manually."); \
+		exit 1; \
+	fi
+	@if ! pre-commit run --all-files; then \
+		$(call print_error,"Pre-commit hooks failed"); \
+		exit 1; \
+	fi
+	$(call print_success,"All pre-commit hooks passed")
+
+pre-commit-update: ## Update pre-commit hooks to latest versions
+	$(call print_status,"Updating pre-commit hooks...")
+	@if ! command -v pre-commit >/dev/null 2>&1; then \
+		$(call print_error,"pre-commit is not installed. Use 'nix develop' or install manually."); \
+		exit 1; \
+	fi
+	@if ! pre-commit autoupdate; then \
+		$(call print_error,"Failed to update pre-commit hooks"); \
+		exit 1; \
+	fi
+	$(call print_success,"Pre-commit hooks updated successfully")
 
 # =============================================================================
 # Development Shortcuts

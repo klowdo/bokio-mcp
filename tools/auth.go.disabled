@@ -57,7 +57,7 @@ type CheckAuthResult struct {
 }
 
 // RegisterAuthTools registers authentication-related MCP tools
-func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
+func RegisterAuthTools(server *mcp.Server, client *bokio.AuthClient) error {
 	// Register bokio_authenticate tool
 	authenticateTool := mcp.NewServerTool[AuthenticateParams, AuthenticateResult](
 		"bokio_authenticate",
@@ -69,7 +69,7 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 			}
 
 			authURL := client.GetAuthorizationURL(state)
-			
+
 			return &mcp.CallToolResultFor[AuthenticateResult]{
 				Content: []mcp.Content{
 					&mcp.TextContent{
@@ -79,12 +79,12 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 			}, nil
 		},
 		mcp.Input(
-			mcp.Property("state", 
+			mcp.Property("state",
 				mcp.Description("Optional state parameter for OAuth2 flow"),
 			),
 		),
 	)
-	
+
 	server.AddTools(authenticateTool)
 
 	// Register bokio_exchange_token tool
@@ -129,7 +129,7 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(exchangeTokenTool)
 
 	// Register bokio_get_connections tool
@@ -157,7 +157,7 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 				Permissions []string
 			}{
 				UserID:      "user_123",
-				CompanyID:   "company_456", 
+				CompanyID:   "company_456",
 				CompanyName: "Example Company",
 				Email:       "user@example.com",
 				Permissions: []string{"read", "write"},
@@ -190,7 +190,7 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 			}, nil
 		},
 	)
-	
+
 	server.AddTools(getConnectionsTool)
 
 	// Register bokio_check_auth tool
@@ -199,7 +199,7 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 		"Check if the client is currently authenticated with valid tokens",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CheckAuthParams]) (*mcp.CallToolResultFor[CheckAuthResult], error) {
 			isAuthenticated := client.IsAuthenticated()
-			
+
 			var message string
 			if isAuthenticated {
 				message = "Client is authenticated with valid tokens"
@@ -216,9 +216,8 @@ func RegisterAuthTools(server *mcp.Server, client *bokio.Client) error {
 			}, nil
 		},
 	)
-	
+
 	server.AddTools(checkAuthTool)
 
 	return nil
 }
-

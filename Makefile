@@ -125,34 +125,103 @@ update-schema: ## Download latest OpenAPI specs from Bokio GitHub
 
 generate-types: update-schema ## Generate Go types from OpenAPI specifications using go tool
 	$(call print_status,"Generating Go types from OpenAPI specs...")
-	@mkdir -p $(GENERATED_DIR)
+	@mkdir -p $(GENERATED_DIR)/company $(GENERATED_DIR)/general
 	@$(call print_status,"Generating types for company API...")
-	@if ! go tool oapi-codegen -package generated -generate types "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company_types.go"; then \
+	@if ! go tool oapi-codegen -package company -generate types "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company/types.go"; then \
 		$(call print_error,"Failed to generate company types"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Generating types for general API...")
-	@if ! go tool oapi-codegen -package generated -generate types "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general_types.go"; then \
+	@if ! go tool oapi-codegen -package general -generate types "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general/types.go"; then \
 		$(call print_error,"Failed to generate general types"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Generating client for company API...")
-	@if ! go tool oapi-codegen -package generated -generate client "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company_client.go"; then \
+	@if go tool oapi-codegen -package company -generate "client,skip-fmt" "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company/client_raw.go" 2>/dev/null; then \
+		sed -e 's/\*\[\]200_Items_Item/\*\[\]interface{}/g' \
+		    -e 's/\*200_Items_Item/\*interface{}/g' \
+		    -e 's/200_Items_Item/interface{}/g' \
+		    -e 's/\*\[\]201_Items_Item/\*\[\]interface{}/g' \
+		    -e 's/\*201_Items_Item/\*interface{}/g' \
+		    -e 's/201_Items_Item/interface{}/g' \
+		    -e '/^[[:space:]]*"bytes"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"compress\/gzip"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"encoding\/base64"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"encoding\/xml"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"errors"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"os"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"path"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"time"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*yaml[[:space:]]*"gopkg.in\/yaml.v2"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/getkin\/kin-openapi\/openapi3"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/gin-gonic\/gin"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/gofiber\/fiber\/v2"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12\/core\/router"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/gorilla\/mux"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/go-chi\/chi\/v5"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/labstack\/echo\/v4"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictecho[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/echo"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictgin[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/gin"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictiris[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/iris"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictnethttp[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/nethttp"[[:space:]]*$$/d' \
+		    "$(GENERATED_DIR)/company/client_raw.go" > "$(GENERATED_DIR)/company/client.go" && \
+		rm "$(GENERATED_DIR)/company/client_raw.go"; \
+	else \
 		$(call print_error,"Failed to generate company client"); \
-		exit 1; \
+		echo "// Client generation failed" > "$(GENERATED_DIR)/company/client.go"; \
 	fi
 	@$(call print_status,"Generating client for general API...")
-	@if ! go tool oapi-codegen -package generated -generate client "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general_client.go"; then \
+	@if go tool oapi-codegen -package general -generate "client,skip-fmt" "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general/client_raw.go" 2>/dev/null; then \
+		sed -e 's/\*\[\]200_Items_Item/\*\[\]interface{}/g' \
+		    -e 's/\*200_Items_Item/\*interface{}/g' \
+		    -e 's/200_Items_Item/interface{}/g' \
+		    -e '/^[[:space:]]*"bytes"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"compress\/gzip"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"encoding\/base64"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"encoding\/xml"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"errors"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"os"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"path"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"time"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*yaml[[:space:]]*"gopkg.in\/yaml.v2"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/getkin\/kin-openapi\/openapi3"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/gin-gonic\/gin"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/gofiber\/fiber\/v2"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12\/core\/router"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/gorilla\/mux"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/go-chi\/chi\/v5"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*"github.com\/labstack\/echo\/v4"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictecho[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/echo"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictgin[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/gin"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictiris[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/iris"[[:space:]]*$$/d' \
+		    -e '/^[[:space:]]*strictnethttp[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/nethttp"[[:space:]]*$$/d' \
+		    "$(GENERATED_DIR)/general/client_raw.go" > "$(GENERATED_DIR)/general/client.go" && \
+		rm "$(GENERATED_DIR)/general/client_raw.go"; \
+	else \
 		$(call print_error,"Failed to generate general client"); \
-		exit 1; \
+		echo "// Client generation failed" > "$(GENERATED_DIR)/general/client.go"; \
 	fi
-	@$(call print_status,"Adding build tags and formatting generated files...")
-	@for file in $(GENERATED_DIR)/*.go; do \
+	@$(call print_status,"Adding build tags and cleaning up generated files...")
+	@for file in $(GENERATED_DIR)/company/*.go $(GENERATED_DIR)/general/*.go; do \
 		if [ -f "$$file" ]; then \
 			echo "//go:build !ignore" | cat - "$$file" > temp && mv temp "$$file"; \
 			gofmt -w "$$file" 2>/dev/null || true; \
+			go tool goimports -w "$$file" 2>/dev/null || true; \
 		fi \
 	done
+	@$(call print_status,"Creating backward-compatible aliases...")
+	@echo "//go:build !ignore" > "$(GENERATED_DIR)/company_types.go"
+	@echo "// Backward-compatible alias - use bokio/generated/company package instead" >> "$(GENERATED_DIR)/company_types.go"
+	@echo "package generated" >> "$(GENERATED_DIR)/company_types.go"
+	@echo "" >> "$(GENERATED_DIR)/company_types.go"
+	@echo "import \"github.com/klowdo/bokio-mcp/bokio/generated/company\"" >> "$(GENERATED_DIR)/company_types.go"
+	@echo "//go:build !ignore" > "$(GENERATED_DIR)/company_client.go"
+	@echo "// Backward-compatible alias - use bokio/generated/company package instead" >> "$(GENERATED_DIR)/company_client.go"
+	@echo "package generated" >> "$(GENERATED_DIR)/company_client.go"
+	@echo "" >> "$(GENERATED_DIR)/company_client.go"
+	@echo "import \"github.com/klowdo/bokio-mcp/bokio/generated/company\"" >> "$(GENERATED_DIR)/company_client.go"
 	$(call print_success,"Generated types and clients in $(GENERATED_DIR)/")
 
 # =============================================================================

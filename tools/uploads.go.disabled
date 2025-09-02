@@ -81,33 +81,25 @@ type DeleteUploadResult struct {
 }
 
 // RegisterUploadTools registers file upload-related MCP tools
-func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
+func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 	// Register bokio_list_uploads tool
 	listUploadsTool := mcp.NewServerTool[ListUploadsParams, ListUploadsResult](
 		"bokio_list_uploads",
 		"List uploaded files with optional filtering and pagination",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListUploadsParams]) (*mcp.CallToolResultFor[ListUploadsResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[ListUploadsResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			// Build query parameters
 			queryParams := make(map[string]string)
-			
+
 			if params.Arguments.Page != nil {
 				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
 			}
-			
+
 			if params.Arguments.PerPage != nil {
 				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
 			}
-			
+
 			if params.Arguments.Status != nil && *params.Arguments.Status != "" {
 				queryParams["status"] = *params.Arguments.Status
 			}
@@ -126,7 +118,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 				}
 			}
 
-			resp, err := client.GET(ctx, path)
+			resp, err := client.AuthenticatedGET(ctx, path)
 			if err != nil {
 				return &mcp.CallToolResultFor[ListUploadsResult]{
 					Content: []mcp.Content{
@@ -178,7 +170,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 					),
 		),
 	)
-	
+
 	server.AddTools(listUploadsTool)
 
 	// Register bokio_upload_file tool
@@ -186,15 +178,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_upload_file",
 		"Upload a file to Bokio for document management",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[UploadFileParams]) (*mcp.CallToolResultFor[UploadFileResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[UploadFileResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPOST
 
 			filePath := params.Arguments.FilePath
 			if filePath == "" {
@@ -256,7 +240,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 				uploadRequest["category"] = *params.Arguments.Category
 			}
 
-			resp, err := client.POST(ctx, "/uploads", uploadRequest)
+			resp, err := client.AuthenticatedPOST(ctx, "/uploads", uploadRequest)
 			if err != nil {
 				return &mcp.CallToolResultFor[UploadFileResult]{
 					Content: []mcp.Content{
@@ -310,7 +294,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(uploadFileTool)
 
 	// Register bokio_get_upload tool
@@ -318,15 +302,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_get_upload",
 		"Get information about a specific uploaded file",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetUploadParams]) (*mcp.CallToolResultFor[GetUploadResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[GetUploadResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -339,7 +315,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("upload ID is required")
 			}
 
-			resp, err := client.GET(ctx, "/uploads/"+id)
+			resp, err := client.AuthenticatedGET(ctx, "/uploads/"+id)
 			if err != nil {
 				return &mcp.CallToolResultFor[GetUploadResult]{
 					Content: []mcp.Content{
@@ -396,7 +372,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(getUploadTool)
 
 	// Register bokio_download_file tool
@@ -404,15 +380,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_download_file",
 		"Download a file from Bokio",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[DownloadFileParams]) (*mcp.CallToolResultFor[DownloadFileResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[DownloadFileResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -436,7 +404,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("output path is required")
 			}
 
-			resp, err := client.GET(ctx, "/uploads/"+id+"/download")
+			resp, err := client.AuthenticatedGET(ctx, "/uploads/"+id+"/download")
 			if err != nil {
 				return &mcp.CallToolResultFor[DownloadFileResult]{
 					Content: []mcp.Content{
@@ -497,7 +465,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(downloadFileTool)
 
 	// Register bokio_delete_upload tool
@@ -505,15 +473,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_delete_upload",
 		"Delete an uploaded file",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[DeleteUploadParams]) (*mcp.CallToolResultFor[DeleteUploadResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[DeleteUploadResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedDELETE
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -526,7 +486,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("upload ID is required")
 			}
 
-			resp, err := client.DELETE(ctx, "/uploads/"+id)
+			resp, err := client.AuthenticatedDELETE(ctx, "/uploads/"+id)
 			if err != nil {
 				return &mcp.CallToolResultFor[DeleteUploadResult]{
 					Content: []mcp.Content{
@@ -572,7 +532,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(deleteUploadTool)
 
 	return nil

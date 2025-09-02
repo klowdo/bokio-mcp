@@ -86,33 +86,25 @@ type UpdateCustomerResult struct {
 }
 
 // RegisterCustomerTools registers customer-related MCP tools
-func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
+func RegisterCustomerTools(server *mcp.Server, client *bokio.AuthClient) error {
 	// Register bokio_list_customers tool
 	listCustomersTool := mcp.NewServerTool[ListCustomersParams, ListCustomersResult](
 		"bokio_list_customers",
 		"List customers with optional filtering and pagination",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCustomersParams]) (*mcp.CallToolResultFor[ListCustomersResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[ListCustomersResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			// Build query parameters
 			queryParams := make(map[string]string)
-			
+
 			if params.Arguments.Page != nil {
 				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
 			}
-			
+
 			if params.Arguments.PerPage != nil {
 				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
 			}
-			
+
 			if params.Arguments.Search != nil && *params.Arguments.Search != "" {
 				queryParams["search"] = *params.Arguments.Search
 			}
@@ -131,7 +123,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 				}
 			}
 
-			resp, err := client.GET(ctx, path)
+			resp, err := client.AuthenticatedGET(ctx, path)
 			if err != nil {
 				return &mcp.CallToolResultFor[ListCustomersResult]{
 					Content: []mcp.Content{
@@ -183,7 +175,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(listCustomersTool)
 
 	// Register bokio_get_customer tool
@@ -191,15 +183,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_get_customer",
 		"Get a specific customer by ID",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetCustomerParams]) (*mcp.CallToolResultFor[GetCustomerResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[GetCustomerResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -212,7 +196,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("customer ID is required")
 			}
 
-			resp, err := client.GET(ctx, "/customers/"+id)
+			resp, err := client.AuthenticatedGET(ctx, "/customers/"+id)
 			if err != nil {
 				return &mcp.CallToolResultFor[GetCustomerResult]{
 					Content: []mcp.Content{
@@ -269,7 +253,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(getCustomerTool)
 
 	// Register bokio_create_customer tool
@@ -277,15 +261,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_create_customer",
 		"Create a new customer",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CreateCustomerParams]) (*mcp.CallToolResultFor[CreateCustomerResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[CreateCustomerResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPOST
 
 			// Parse and validate the request
 			request, err := parseCreateCustomerRequestFromParams(params.Arguments)
@@ -299,7 +275,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("invalid request: %w", err)
 			}
 
-			resp, err := client.POST(ctx, "/customers", request)
+			resp, err := client.AuthenticatedPOST(ctx, "/customers", request)
 			if err != nil {
 				return &mcp.CallToolResultFor[CreateCustomerResult]{
 					Content: []mcp.Content{
@@ -364,7 +340,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 				),
 		),
 	)
-	
+
 	server.AddTools(createCustomerTool)
 
 	// Register bokio_update_customer tool
@@ -372,15 +348,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_update_customer",
 		"Update an existing customer",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[UpdateCustomerParams]) (*mcp.CallToolResultFor[UpdateCustomerResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[UpdateCustomerResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPATCH
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -396,7 +364,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 			// Parse update request (only include provided fields)
 			updateRequest := buildUpdateCustomerRequest(params.Arguments)
 
-			resp, err := client.PATCH(ctx, "/customers/"+id, updateRequest)
+			resp, err := client.AuthenticatedPATCH(ctx, "/customers/"+id, updateRequest)
 			if err != nil {
 				return &mcp.CallToolResultFor[UpdateCustomerResult]{
 					Content: []mcp.Content{
@@ -474,7 +442,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 				),
 		),
 	)
-	
+
 	server.AddTools(updateCustomerTool)
 
 	return nil
@@ -538,27 +506,27 @@ func parseCreateCustomerRequestFromParams(params CreateCustomerParams) (*bokio.C
 // buildUpdateCustomerRequest builds an update request from typed parameters
 func buildUpdateCustomerRequest(params UpdateCustomerParams) map[string]interface{} {
 	updateRequest := make(map[string]interface{})
-	
+
 	if params.Name != nil && *params.Name != "" {
 		updateRequest["name"] = *params.Name
 	}
-	
+
 	if params.Email != nil {
 		updateRequest["email"] = *params.Email
 	}
-	
+
 	if params.Phone != nil {
 		updateRequest["phone"] = *params.Phone
 	}
-	
+
 	if params.OrganizationNumber != nil {
 		updateRequest["organization_number"] = *params.OrganizationNumber
 	}
-	
+
 	if params.VATNumber != nil {
 		updateRequest["vat_number"] = *params.VATNumber
 	}
-	
+
 	if params.PaymentTerms != nil {
 		updateRequest["payment_terms"] = *params.PaymentTerms
 	}

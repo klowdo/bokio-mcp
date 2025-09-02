@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/klowdo/bokio-mcp/bokio"
+	"github.com/klowdo/bokio-mcp/bokio/generated/company"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -22,10 +23,10 @@ type ListJournalEntriesParams struct {
 
 // ListJournalEntriesResult defines the result of listing journal entries
 type ListJournalEntriesResult struct {
-	Success    bool                     `json:"success"`
-	Data       []bokio.JournalEntry     `json:"data,omitempty"`
-	Pagination interface{}              `json:"pagination,omitempty"`
-	Error      string                   `json:"error,omitempty"`
+	Success    bool        `json:"success"`
+	Data       interface{} `json:"data,omitempty"`
+	Pagination interface{} `json:"pagination,omitempty"`
+	Error      string      `json:"error,omitempty"`
 }
 
 // JournalEntryLineParams defines the parameters for a journal entry line
@@ -46,10 +47,10 @@ type CreateJournalEntryParams struct {
 
 // CreateJournalEntryResult defines the result of creating a journal entry
 type CreateJournalEntryResult struct {
-	Success bool                 `json:"success"`
-	Data    *bokio.JournalEntry  `json:"data,omitempty"`
-	Message string               `json:"message,omitempty"`
-	Error   string               `json:"error,omitempty"`
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Message string      `json:"message,omitempty"`
+	Error   string      `json:"error,omitempty"`
 }
 
 // ReverseJournalEntryParams defines the parameters for reversing a journal entry
@@ -61,8 +62,8 @@ type ReverseJournalEntryParams struct {
 
 // ReverseJournalEntryResult defines the result of reversing a journal entry
 type ReverseJournalEntryResult struct {
-	Success bool                 `json:"success"`
-	Data    *bokio.JournalEntry  `json:"data,omitempty"`
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
 	Message string               `json:"message,omitempty"`
 	Error   string               `json:"error,omitempty"`
 }
@@ -74,47 +75,39 @@ type GetAccountsParams struct {
 
 // GetAccountsResult defines the result of getting accounts
 type GetAccountsResult struct {
-	Success bool             `json:"success"`
-	Data    []bokio.Account  `json:"data,omitempty"`
-	Error   string           `json:"error,omitempty"`
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
 }
 
 // RegisterJournalTools registers journal entry-related MCP tools
-func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
+func RegisterJournalTools(server *mcp.Server, client *bokio.AuthClient) error {
 	// Register bokio_list_journal_entries tool
 	listJournalEntriesTool := mcp.NewServerTool[ListJournalEntriesParams, ListJournalEntriesResult](
 		"bokio_list_journal_entries",
 		"List journal entries with optional filtering and pagination",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListJournalEntriesParams]) (*mcp.CallToolResultFor[ListJournalEntriesResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[ListJournalEntriesResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			// Build query parameters
 			queryParams := make(map[string]string)
-			
+
 			if params.Arguments.Page != nil {
 				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
 			}
-			
+
 			if params.Arguments.PerPage != nil {
 				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
 			}
-			
+
 			if params.Arguments.FromDate != nil && *params.Arguments.FromDate != "" {
 				queryParams["from_date"] = *params.Arguments.FromDate
 			}
-			
+
 			if params.Arguments.ToDate != nil && *params.Arguments.ToDate != "" {
 				queryParams["to_date"] = *params.Arguments.ToDate
 			}
-			
+
 			if params.Arguments.AccountCode != nil && *params.Arguments.AccountCode != "" {
 				queryParams["account_code"] = *params.Arguments.AccountCode
 			}
@@ -133,7 +126,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 				}
 			}
 
-			resp, err := client.GET(ctx, path)
+			resp, err := client.AuthenticatedGET(ctx, path)
 			if err != nil {
 				return &mcp.CallToolResultFor[ListJournalEntriesResult]{
 					Content: []mcp.Content{
@@ -191,7 +184,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(listJournalEntriesTool)
 
 	// Register bokio_create_journal_entry tool
@@ -199,15 +192,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_create_journal_entry",
 		"Create a new journal entry with debit and credit lines",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CreateJournalEntryParams]) (*mcp.CallToolResultFor[CreateJournalEntryResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPOST
 
 			// Parse and validate the request
 			request, err := parseCreateJournalEntryRequestFromParams(params.Arguments)
@@ -232,7 +217,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 				}, nil
 			}
 
-			resp, err := client.POST(ctx, "/journal-entries", request)
+			resp, err := client.AuthenticatedPOST(ctx, "/journal-entries", request)
 			if err != nil {
 				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
 					Content: []mcp.Content{
@@ -290,7 +275,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(createJournalEntryTool)
 
 	// Register bokio_reverse_journal_entry tool
@@ -298,15 +283,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_reverse_journal_entry",
 		"Create a reversing journal entry for an existing entry",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ReverseJournalEntryParams]) (*mcp.CallToolResultFor[ReverseJournalEntryResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPOST
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -338,7 +315,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 				reversalRequest["description"] = *params.Arguments.Description
 			}
 
-			resp, err := client.POST(ctx, "/journal-entries/"+id+"/reverse", reversalRequest)
+			resp, err := client.AuthenticatedPOST(ctx, "/journal-entries/"+id+"/reverse", reversalRequest)
 			if err != nil {
 				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
 					Content: []mcp.Content{
@@ -402,7 +379,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(reverseJournalEntryTool)
 
 	// Register bokio_get_accounts tool
@@ -410,22 +387,14 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_get_accounts",
 		"Get chart of accounts to see available account codes",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetAccountsParams]) (*mcp.CallToolResultFor[GetAccountsResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[GetAccountsResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedGET
 
 			path := "/accounts"
 			if params.Arguments.Type != nil && *params.Arguments.Type != "" {
 				path += "?type=" + *params.Arguments.Type
 			}
 
-			resp, err := client.GET(ctx, path)
+			resp, err := client.AuthenticatedGET(ctx, path)
 			if err != nil {
 				return &mcp.CallToolResultFor[GetAccountsResult]{
 					Content: []mcp.Content{
@@ -471,7 +440,7 @@ func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 					),
 		),
 	)
-	
+
 	server.AddTools(getAccountsTool)
 
 	return nil

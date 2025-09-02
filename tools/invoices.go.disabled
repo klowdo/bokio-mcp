@@ -87,37 +87,27 @@ type UpdateInvoiceResult struct {
 }
 
 // RegisterInvoiceTools registers invoice-related MCP tools
-func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
+func RegisterInvoiceTools(server *mcp.Server, client *bokio.AuthClient) error {
 	// Register bokio_list_invoices tool
 	listInvoicesTool := mcp.NewServerTool[ListInvoicesParams, ListInvoicesResult](
 		"bokio_list_invoices",
 		"List invoices with optional filtering and pagination",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListInvoicesParams]) (*mcp.CallToolResultFor[ListInvoicesResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[ListInvoicesResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
-
 			// Build query parameters
 			queryParams := make(map[string]string)
-			
+
 			if params.Arguments.Page != nil {
 				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
 			}
-			
+
 			if params.Arguments.PerPage != nil {
 				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
 			}
-			
+
 			if params.Arguments.Status != nil && *params.Arguments.Status != "" {
 				queryParams["status"] = *params.Arguments.Status
 			}
-			
+
 			if params.Arguments.CustomerID != nil && *params.Arguments.CustomerID != "" {
 				queryParams["customer_id"] = *params.Arguments.CustomerID
 			}
@@ -136,7 +126,8 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 				}
 			}
 
-			resp, err := client.GET(ctx, path)
+			// Use authenticated request which handles authentication automatically
+			resp, err := client.AuthenticatedGET(ctx, path)
 			if err != nil {
 				return &mcp.CallToolResultFor[ListInvoicesResult]{
 					Content: []mcp.Content{
@@ -191,7 +182,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(listInvoicesTool)
 
 	// Register bokio_get_invoice tool
@@ -199,16 +190,6 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_get_invoice",
 		"Get a specific invoice by ID",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetInvoiceParams]) (*mcp.CallToolResultFor[GetInvoiceResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[GetInvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
-
 			id := params.Arguments.ID
 			if id == "" {
 				return &mcp.CallToolResultFor[GetInvoiceResult]{
@@ -220,7 +201,8 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("invoice ID is required")
 			}
 
-			resp, err := client.GET(ctx, "/invoices/"+id)
+			// Use authenticated request which handles authentication automatically
+			resp, err := client.AuthenticatedGET(ctx, "/invoices/"+id)
 			if err != nil {
 				return &mcp.CallToolResultFor[GetInvoiceResult]{
 					Content: []mcp.Content{
@@ -277,7 +259,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(getInvoiceTool)
 
 	// Register bokio_create_invoice tool
@@ -285,15 +267,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_create_invoice",
 		"Create a new invoice",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CreateInvoiceParams]) (*mcp.CallToolResultFor[CreateInvoiceResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[CreateInvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPOST
 
 			// Parse and validate the request
 			request, err := parseCreateInvoiceRequestFromParams(params.Arguments)
@@ -307,7 +281,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 				}, fmt.Errorf("invalid request: %w", err)
 			}
 
-			resp, err := client.POST(ctx, "/invoices", request)
+			resp, err := client.AuthenticatedPOST(ctx, "/invoices", request)
 			if err != nil {
 				return &mcp.CallToolResultFor[CreateInvoiceResult]{
 					Content: []mcp.Content{
@@ -367,7 +341,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(createInvoiceTool)
 
 	// Register bokio_update_invoice tool
@@ -375,15 +349,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 		"bokio_update_invoice",
 		"Update an existing invoice",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[UpdateInvoiceParams]) (*mcp.CallToolResultFor[UpdateInvoiceResult], error) {
-			if !client.IsAuthenticated() {
-				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Not authenticated. Use bokio_authenticate first.",
-						},
-					},
-				}, nil
-			}
+			// Authentication is handled automatically by AuthenticatedPUT
 
 			id := params.Arguments.ID
 			if id == "" {
@@ -399,7 +365,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 			// Parse update request (only include non-nil fields)
 			updateRequest := buildUpdateInvoiceRequest(params.Arguments)
 
-			resp, err := client.PATCH(ctx, "/invoices/"+id, updateRequest)
+			resp, err := client.AuthenticatedPATCH(ctx, "/invoices/"+id, updateRequest)
 			if err != nil {
 				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
 					Content: []mcp.Content{
@@ -468,7 +434,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 			),
 		),
 	)
-	
+
 	server.AddTools(updateInvoiceTool)
 
 	return nil
@@ -528,19 +494,19 @@ func parseCreateInvoiceRequestFromParams(params CreateInvoiceParams) (*bokio.Cre
 // buildUpdateInvoiceRequest builds an update request from typed parameters
 func buildUpdateInvoiceRequest(params UpdateInvoiceParams) map[string]interface{} {
 	updateRequest := make(map[string]interface{})
-	
+
 	if params.CustomerID != nil && *params.CustomerID != "" {
 		updateRequest["customer_id"] = *params.CustomerID
 	}
-	
+
 	if params.Date != nil && *params.Date != "" {
 		updateRequest["date"] = *params.Date
 	}
-	
+
 	if params.DueDate != nil && *params.DueDate != "" {
 		updateRequest["due_date"] = *params.DueDate
 	}
-	
+
 	if params.Description != nil {
 		updateRequest["description"] = *params.Description
 	}

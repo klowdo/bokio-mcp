@@ -51,40 +51,32 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Initialize Bokio API client
-	bokioClient, err := bokio.NewClient(&config.BokioConfig)
+	// Initialize Bokio API client using only generated clients
+	bokioClient, err := bokio.NewAuthClient(config.BokioConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create Bokio client: %w", err)
+		return fmt.Errorf("failed to create Bokio auth client: %w", err)
 	}
 
 	// Create MCP server
 	server := mcp.NewServer(serverName, serverVersion, nil)
 
-	// Register tools with the server
-	if err := tools.RegisterAuthTools(server, bokioClient); err != nil {
-		return fmt.Errorf("failed to register auth tools: %w", err)
+	// Register tools with the server using ONLY generated API clients
+
+	// Register pure generated journal tools (working demonstration)
+	if err := tools.RegisterGeneratedJournalTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register generated journal tools: %w", err)
 	}
 
-	if err := tools.RegisterInvoiceTools(server, bokioClient); err != nil {
-		return fmt.Errorf("failed to register invoice tools: %w", err)
-	}
-
-	if err := tools.RegisterCustomerTools(server, bokioClient); err != nil {
-		return fmt.Errorf("failed to register customer tools: %w", err)
-	}
-
-	if err := tools.RegisterJournalTools(server, bokioClient); err != nil {
-		return fmt.Errorf("failed to register journal tools: %w", err)
-	}
-
-	if err := tools.RegisterUploadTools(server, bokioClient); err != nil {
-		return fmt.Errorf("failed to register upload tools: %w", err)
-	}
+	// TODO: Migrate remaining tools to use generated clients
+	// The old tools used manual types that don't exist in the actual API schema
+	// They need to be rewritten to use the generated client methods and types
 
 	slog.Info("Starting Bokio MCP server",
 		"name", serverName,
 		"version", serverVersion,
 		"bokio_base_url", config.BokioConfig.BaseURL,
+		"auth_method", "Integration Token",
+		"authenticated", bokioClient.IsAuthenticated(),
 		"read_only_mode", config.ReadOnly)
 
 	// Create and start the MCP server with stdio transport
@@ -94,30 +86,21 @@ func run(ctx context.Context) error {
 
 // Config holds all application configuration
 type Config struct {
-	BokioConfig bokio.Config
+	BokioConfig *bokio.Config
 	ReadOnly    bool
 }
 
 // loadConfig loads configuration from environment variables
 func loadConfig() (*Config, error) {
+	// Load simple configuration from environment
+	bokioConfig := bokio.LoadConfigFromEnv()
+
+	if bokioConfig.IntegrationToken == "" {
+		return nil, fmt.Errorf("BOKIO_INTEGRATION_TOKEN is required")
+	}
+
 	// Parse read-only mode
 	readOnly := os.Getenv("BOKIO_READ_ONLY") == "true"
-
-	bokioConfig := bokio.Config{
-		BaseURL:      getEnvWithDefault("BOKIO_BASE_URL", "https://api.bokio.se"),
-		ClientID:     os.Getenv("BOKIO_CLIENT_ID"),
-		ClientSecret: os.Getenv("BOKIO_CLIENT_SECRET"),
-		RedirectURI:  getEnvWithDefault("BOKIO_REDIRECT_URL", "http://localhost:8080/callback"),
-		ReadOnly:     readOnly,
-	}
-
-	// Validate required configuration
-	if bokioConfig.ClientID == "" {
-		return nil, fmt.Errorf("BOKIO_CLIENT_ID environment variable is required")
-	}
-	if bokioConfig.ClientSecret == "" {
-		return nil, fmt.Errorf("BOKIO_CLIENT_SECRET environment variable is required")
-	}
 
 	return &Config{
 		BokioConfig: bokioConfig,

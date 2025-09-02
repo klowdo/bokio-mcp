@@ -114,7 +114,7 @@
       };
 
       checks = {
-        pre-commit-check = pre-commit-check;
+        inherit pre-commit-check;
       };
 
       formatter = pkgs.nixfmt-rfc-style;

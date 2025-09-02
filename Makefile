@@ -64,19 +64,19 @@ COLOR_RED := \033[31m
 
 # Helper function to print status messages
 define print_status
-	@printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "$(1)"
+	echo "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
 endef
 
 define print_success
-	@printf "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "$(1)"
+	echo "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
 endef
 
 define print_warning
-	@printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "$(1)"
+	echo "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
 endef
 
 define print_error
-	@printf "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "$(1)"
+	echo "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
 endef
 
 # Check if command exists

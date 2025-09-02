@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/klowdo/bokio-mcp/bokio"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -511,7 +512,7 @@ func parseCreateCustomerRequestFromParams(params CreateCustomerParams) (*bokio.C
 	}
 
 	if params.PaymentTerms != nil {
-		request.PaymentTerms = string(*params.PaymentTerms)
+		request.PaymentTerms = strconv.Itoa(*params.PaymentTerms)
 	}
 
 	if params.Address != nil {

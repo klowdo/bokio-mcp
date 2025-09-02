@@ -5,514 +5,545 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/klowdo/bokio-mcp/bokio"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// ListInvoicesParams defines the parameters for listing invoices
+type ListInvoicesParams struct {
+	Page       *int    `json:"page,omitempty"`
+	PerPage    *int    `json:"per_page,omitempty"`
+	Status     *string `json:"status,omitempty"`
+	CustomerID *string `json:"customer_id,omitempty"`
+}
+
+// ListInvoicesResult defines the result of listing invoices
+type ListInvoicesResult struct {
+	Success    bool                   `json:"success"`
+	Data       []bokio.Invoice        `json:"data,omitempty"`
+	Pagination interface{}            `json:"pagination,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+}
+
+// GetInvoiceParams defines the parameters for getting an invoice
+type GetInvoiceParams struct {
+	ID string `json:"id"`
+}
+
+// GetInvoiceResult defines the result of getting an invoice
+type GetInvoiceResult struct {
+	Success bool           `json:"success"`
+	Data    *bokio.Invoice `json:"data,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
+
+// InvoiceItemParams defines the parameters for an invoice item
+type InvoiceItemParams struct {
+	Description string           `json:"description"`
+	Quantity    float64          `json:"quantity"`
+	UnitPrice   MoneyParams      `json:"unit_price"`
+	VATRate     float64          `json:"vat_rate"`
+}
+
+// MoneyParams defines the parameters for money values
+type MoneyParams struct {
+	Amount   float64 `json:"amount"`
+	Currency *string `json:"currency,omitempty"`
+}
+
+// CreateInvoiceParams defines the parameters for creating an invoice
+type CreateInvoiceParams struct {
+	CustomerID  string              `json:"customer_id"`
+	Date        *string             `json:"date,omitempty"`
+	DueDate     *string             `json:"due_date,omitempty"`
+	Description *string             `json:"description,omitempty"`
+	Items       []InvoiceItemParams `json:"items"`
+}
+
+// CreateInvoiceResult defines the result of creating an invoice
+type CreateInvoiceResult struct {
+	Success bool           `json:"success"`
+	Data    *bokio.Invoice `json:"data,omitempty"`
+	Message string         `json:"message,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
+
+// UpdateInvoiceParams defines the parameters for updating an invoice
+type UpdateInvoiceParams struct {
+	ID          string  `json:"id"`
+	CustomerID  *string `json:"customer_id,omitempty"`
+	Date        *string `json:"date,omitempty"`
+	DueDate     *string `json:"due_date,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
+// UpdateInvoiceResult defines the result of updating an invoice
+type UpdateInvoiceResult struct {
+	Success bool           `json:"success"`
+	Data    *bokio.Invoice `json:"data,omitempty"`
+	Message string         `json:"message,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
+
 // RegisterInvoiceTools registers invoice-related MCP tools
 func RegisterInvoiceTools(server *mcp.Server, client *bokio.Client) error {
 	// Register bokio_list_invoices tool
-	if err := server.RegisterTool("bokio_list_invoices", mcp.Tool{
-		Name: "bokio_list_invoices",
-		Description: "List invoices with optional filtering and pagination",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"page": map[string]interface{}{
-					"type": "integer",
-					"description": "Page number for pagination (default: 1)",
-					"minimum": 1,
-				},
-				"per_page": map[string]interface{}{
-					"type": "integer",
-					"description": "Number of items per page (default: 25, max: 100)",
-					"minimum": 1,
-					"maximum": 100,
-				},
-				"status": map[string]interface{}{
-					"type": "string",
-					"description": "Filter by invoice status",
-					"enum": []string{"draft", "sent", "paid", "overdue", "cancelled"},
-				},
-				"customer_id": map[string]interface{}{
-					"type": "string",
-					"description": "Filter by customer ID",
-				},
-			},
-		},
-		Handler: createListInvoicesHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_list_invoices tool: %w", err)
-	}
-
-	// Register bokio_get_invoice tool
-	if err := server.RegisterTool("bokio_get_invoice", mcp.Tool{
-		Name: "bokio_get_invoice",
-		Description: "Get a specific invoice by ID",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
-					"type": "string",
-					"description": "Invoice ID",
-				},
-			},
-			"required": []string{"id"},
-		},
-		Handler: createGetInvoiceHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_get_invoice tool: %w", err)
-	}
-
-	// Register bokio_create_invoice tool
-	if err := server.RegisterTool("bokio_create_invoice", mcp.Tool{
-		Name: "bokio_create_invoice",
-		Description: "Create a new invoice",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"customer_id": map[string]interface{}{
-					"type": "string",
-					"description": "ID of the customer",
-				},
-				"date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Invoice date (YYYY-MM-DD)",
-				},
-				"due_date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Due date (YYYY-MM-DD)",
-				},
-				"description": map[string]interface{}{
-					"type": "string",
-					"description": "Invoice description",
-				},
-				"items": map[string]interface{}{
-					"type": "array",
-					"description": "Invoice line items",
-					"items": map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"description": map[string]interface{}{
-								"type": "string",
-								"description": "Item description",
-							},
-							"quantity": map[string]interface{}{
-								"type": "number",
-								"description": "Quantity",
-								"minimum": 0,
-							},
-							"unit_price": map[string]interface{}{
-								"type": "object",
-								"properties": map[string]interface{}{
-									"amount": map[string]interface{}{
-										"type": "number",
-										"description": "Price amount",
-									},
-									"currency": map[string]interface{}{
-										"type": "string",
-										"description": "Currency code",
-										"default": "SEK",
-									},
-								},
-								"required": []string{"amount"},
-							},
-							"vat_rate": map[string]interface{}{
-								"type": "number",
-								"description": "VAT rate as decimal (e.g., 0.25 for 25%)",
-								"minimum": 0,
-								"maximum": 1,
-							},
+	listInvoicesTool := mcp.NewServerTool[ListInvoicesParams, ListInvoicesResult](
+		"bokio_list_invoices",
+		"List invoices with optional filtering and pagination",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListInvoicesParams]) (*mcp.CallToolResultFor[ListInvoicesResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[ListInvoicesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
 						},
-						"required": []string{"description", "quantity", "unit_price", "vat_rate"},
+					},
+				}, nil
+			}
+
+			// Build query parameters
+			queryParams := make(map[string]string)
+			
+			if params.Arguments.Page != nil {
+				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
+			}
+			
+			if params.Arguments.PerPage != nil {
+				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
+			}
+			
+			if params.Arguments.Status != nil && *params.Arguments.Status != "" {
+				queryParams["status"] = *params.Arguments.Status
+			}
+			
+			if params.Arguments.CustomerID != nil && *params.Arguments.CustomerID != "" {
+				queryParams["customer_id"] = *params.Arguments.CustomerID
+			}
+
+			// Construct URL with query parameters
+			path := "/invoices"
+			if len(queryParams) > 0 {
+				path += "?"
+				first := true
+				for key, value := range queryParams {
+					if !first {
+						path += "&"
+					}
+					path += key + "=" + value
+					first = false
+				}
+			}
+
+			resp, err := client.GET(ctx, path)
+			if err != nil {
+				return &mcp.CallToolResultFor[ListInvoicesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to list invoices: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[ListInvoicesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var invoiceList bokio.InvoicesResponse
+			if err := json.Unmarshal(resp.Body(), &invoiceList); err != nil {
+				return &mcp.CallToolResultFor[ListInvoicesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[ListInvoicesResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Found %d invoices", len(invoiceList.Items)),
 					},
 				},
-			},
-			"required": []string{"customer_id", "items"},
+			}, nil
 		},
-		Handler: createCreateInvoiceHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_create_invoice tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("page",
+				mcp.Description("Page number for pagination (default: 1)"),
+				),
+			mcp.Property("per_page",
+				mcp.Description("Number of items per page (default: 25, max: 100)"),
+					),
+			mcp.Property("status",
+				mcp.Description("Filter by invoice status"),
+					),
+			mcp.Property("customer_id",
+				mcp.Description("Filter by customer ID"),
+			),
+		),
+	)
+	
+	server.AddTools(listInvoicesTool)
+
+	// Register bokio_get_invoice tool
+	getInvoiceTool := mcp.NewServerTool[GetInvoiceParams, GetInvoiceResult](
+		"bokio_get_invoice",
+		"Get a specific invoice by ID",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetInvoiceParams]) (*mcp.CallToolResultFor[GetInvoiceResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[GetInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			id := params.Arguments.ID
+			if id == "" {
+				return &mcp.CallToolResultFor[GetInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Invoice ID is required",
+						},
+					},
+				}, fmt.Errorf("invoice ID is required")
+			}
+
+			resp, err := client.GET(ctx, "/invoices/"+id)
+			if err != nil {
+				return &mcp.CallToolResultFor[GetInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to get invoice: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() == http.StatusNotFound {
+				return &mcp.CallToolResultFor[GetInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Invoice not found",
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[GetInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var invoice bokio.Invoice
+			if err := json.Unmarshal(resp.Body(), &invoice); err != nil {
+				return &mcp.CallToolResultFor[GetInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[GetInvoiceResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invoice: %s (ID: %s)", invoice.InvoiceNumber, invoice.ID),
+					},
+				},
+			}, nil
+		},
+		mcp.Input(
+			mcp.Property("id",
+				mcp.Description("Invoice ID"),
+				mcp.Required(true),
+			),
+		),
+	)
+	
+	server.AddTools(getInvoiceTool)
+
+	// Register bokio_create_invoice tool
+	createInvoiceTool := mcp.NewServerTool[CreateInvoiceParams, CreateInvoiceResult](
+		"bokio_create_invoice",
+		"Create a new invoice",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CreateInvoiceParams]) (*mcp.CallToolResultFor[CreateInvoiceResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[CreateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			// Parse and validate the request
+			request, err := parseCreateInvoiceRequestFromParams(params.Arguments)
+			if err != nil {
+				return &mcp.CallToolResultFor[CreateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Invalid request: %v", err),
+						},
+					},
+				}, fmt.Errorf("invalid request: %w", err)
+			}
+
+			resp, err := client.POST(ctx, "/invoices", request)
+			if err != nil {
+				return &mcp.CallToolResultFor[CreateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to create invoice: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[CreateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var invoice bokio.Invoice
+			if err := json.Unmarshal(resp.Body(), &invoice); err != nil {
+				return &mcp.CallToolResultFor[CreateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[CreateInvoiceResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invoice created successfully: %s (ID: %s)", invoice.InvoiceNumber, invoice.ID),
+					},
+				},
+			}, nil
+		},
+		mcp.Input(
+			mcp.Property("customer_id",
+				mcp.Description("ID of the customer"),
+				mcp.Required(true),
+			),
+			mcp.Property("date",
+				mcp.Description("Invoice date (YYYY-MM-DD)"),
+					),
+			mcp.Property("due_date",
+				mcp.Description("Due date (YYYY-MM-DD)"),
+					),
+			mcp.Property("description",
+				mcp.Description("Invoice description"),
+			),
+			mcp.Property("items",
+				mcp.Description("Invoice line items"),
+				mcp.Required(true),
+			),
+		),
+	)
+	
+	server.AddTools(createInvoiceTool)
 
 	// Register bokio_update_invoice tool
-	if err := server.RegisterTool("bokio_update_invoice", mcp.Tool{
-		Name: "bokio_update_invoice",
-		Description: "Update an existing invoice",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
-					"type": "string",
-					"description": "Invoice ID",
+	updateInvoiceTool := mcp.NewServerTool[UpdateInvoiceParams, UpdateInvoiceResult](
+		"bokio_update_invoice",
+		"Update an existing invoice",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[UpdateInvoiceParams]) (*mcp.CallToolResultFor[UpdateInvoiceResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			id := params.Arguments.ID
+			if id == "" {
+				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Invoice ID is required",
+						},
+					},
+				}, fmt.Errorf("invoice ID is required")
+			}
+
+			// Parse update request (only include non-nil fields)
+			updateRequest := buildUpdateInvoiceRequest(params.Arguments)
+
+			resp, err := client.PATCH(ctx, "/invoices/"+id, updateRequest)
+			if err != nil {
+				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to update invoice: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() == http.StatusNotFound {
+				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Invoice not found",
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var invoice bokio.Invoice
+			if err := json.Unmarshal(resp.Body(), &invoice); err != nil {
+				return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[UpdateInvoiceResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invoice updated successfully: %s (ID: %s)", invoice.InvoiceNumber, invoice.ID),
+					},
 				},
-				"customer_id": map[string]interface{}{
-					"type": "string",
-					"description": "ID of the customer",
-				},
-				"date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Invoice date (YYYY-MM-DD)",
-				},
-				"due_date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Due date (YYYY-MM-DD)",
-				},
-				"description": map[string]interface{}{
-					"type": "string",
-					"description": "Invoice description",
-				},
-			},
-			"required": []string{"id"},
+			}, nil
 		},
-		Handler: createUpdateInvoiceHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_update_invoice tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("id",
+				mcp.Description("Invoice ID"),
+				mcp.Required(true),
+			),
+			mcp.Property("customer_id",
+				mcp.Description("ID of the customer"),
+			),
+			mcp.Property("date",
+				mcp.Description("Invoice date (YYYY-MM-DD)"),
+					),
+			mcp.Property("due_date",
+				mcp.Description("Due date (YYYY-MM-DD)"),
+					),
+			mcp.Property("description",
+				mcp.Description("Invoice description"),
+			),
+		),
+	)
+	
+	server.AddTools(updateInvoiceTool)
 
 	return nil
 }
 
-// createListInvoicesHandler creates the handler for the list invoices tool
-func createListInvoicesHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
 
-		// Build query parameters
-		queryParams := make(map[string]string)
-		
-		if page, ok := params["page"]; ok {
-			queryParams["page"] = fmt.Sprintf("%v", page)
-		}
-		
-		if perPage, ok := params["per_page"]; ok {
-			queryParams["per_page"] = fmt.Sprintf("%v", perPage)
-		}
-		
-		if status, ok := params["status"].(string); ok && status != "" {
-			queryParams["status"] = status
-		}
-		
-		if customerID, ok := params["customer_id"].(string); ok && customerID != "" {
-			queryParams["customer_id"] = customerID
-		}
 
-		// Construct URL with query parameters
-		path := "/invoices"
-		if len(queryParams) > 0 {
-			path += "?"
-			first := true
-			for key, value := range queryParams {
-				if !first {
-					path += "&"
-				}
-				path += key + "=" + value
-				first = false
-			}
-		}
 
-		resp, err := client.Get(ctx, path)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to list invoices: %v", err),
-			}, nil
-		}
 
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var invoiceList bokio.ListResponse[bokio.Invoice]
-		if err := json.Unmarshal(resp.Body(), &invoiceList); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": invoiceList.Data,
-			"pagination": invoiceList.Meta,
-		}, nil
-	}
-}
-
-// createGetInvoiceHandler creates the handler for the get invoice tool
-func createGetInvoiceHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		id, ok := params["id"].(string)
-		if !ok || id == "" {
-			return nil, fmt.Errorf("invoice ID is required")
-		}
-
-		resp, err := client.Get(ctx, "/invoices/"+id)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to get invoice: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() == http.StatusNotFound {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Invoice not found",
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var invoice bokio.Invoice
-		if err := json.Unmarshal(resp.Body(), &invoice); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": invoice,
-		}, nil
-	}
-}
-
-// createCreateInvoiceHandler creates the handler for the create invoice tool
-func createCreateInvoiceHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		// Parse and validate the request
-		request, err := parseCreateInvoiceRequest(params)
-		if err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
-
-		resp, err := client.Post(ctx, "/invoices", request)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to create invoice: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var invoice bokio.Invoice
-		if err := json.Unmarshal(resp.Body(), &invoice); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": invoice,
-			"message": "Invoice created successfully",
-		}, nil
-	}
-}
-
-// createUpdateInvoiceHandler creates the handler for the update invoice tool
-func createUpdateInvoiceHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		id, ok := params["id"].(string)
-		if !ok || id == "" {
-			return nil, fmt.Errorf("invoice ID is required")
-		}
-
-		// Parse update request (only include non-nil fields)
-		updateRequest := make(map[string]interface{})
-		
-		if customerID, ok := params["customer_id"].(string); ok && customerID != "" {
-			updateRequest["customer_id"] = customerID
-		}
-		
-		if date, ok := params["date"].(string); ok && date != "" {
-			updateRequest["date"] = date
-		}
-		
-		if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
-			updateRequest["due_date"] = dueDate
-		}
-		
-		if description, ok := params["description"].(string); ok {
-			updateRequest["description"] = description
-		}
-
-		resp, err := client.Patch(ctx, "/invoices/"+id, updateRequest)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to update invoice: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() == http.StatusNotFound {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Invoice not found",
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var invoice bokio.Invoice
-		if err := json.Unmarshal(resp.Body(), &invoice); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": invoice,
-			"message": "Invoice updated successfully",
-		}, nil
-	}
-}
-
-// parseCreateInvoiceRequest parses the parameters into a CreateInvoiceRequest
-func parseCreateInvoiceRequest(params map[string]interface{}) (*bokio.CreateInvoiceRequest, error) {
-	customerID, ok := params["customer_id"].(string)
-	if !ok || customerID == "" {
+// parseCreateInvoiceRequestFromParams parses the new typed parameters into a CreateInvoiceRequest
+func parseCreateInvoiceRequestFromParams(params CreateInvoiceParams) (*bokio.CreateInvoiceRequest, error) {
+	if params.CustomerID == "" {
 		return nil, fmt.Errorf("customer_id is required")
 	}
 
-	itemsRaw, ok := params["items"].([]interface{})
-	if !ok || len(itemsRaw) == 0 {
+	if len(params.Items) == 0 {
 		return nil, fmt.Errorf("items are required")
 	}
 
-	items := make([]bokio.InvoiceItem, len(itemsRaw))
-	for i, itemRaw := range itemsRaw {
-		itemMap, ok := itemRaw.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("invalid item at index %d", i)
-		}
-
-		description, ok := itemMap["description"].(string)
-		if !ok || description == "" {
+	items := make([]bokio.InvoiceItem, len(params.Items))
+	for i, item := range params.Items {
+		if item.Description == "" {
 			return nil, fmt.Errorf("item description is required at index %d", i)
 		}
 
-		quantity, ok := itemMap["quantity"].(float64)
-		if !ok {
-			// Try to parse as integer
-			if qInt, ok := itemMap["quantity"].(int); ok {
-				quantity = float64(qInt)
-			} else {
-				return nil, fmt.Errorf("item quantity is required at index %d", i)
-			}
-		}
-
-		unitPriceRaw, ok := itemMap["unit_price"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("item unit_price is required at index %d", i)
-		}
-
-		amount, ok := unitPriceRaw["amount"].(float64)
-		if !ok {
-			// Try to parse as integer
-			if amtInt, ok := unitPriceRaw["amount"].(int); ok {
-				amount = float64(amtInt)
-			} else {
-				return nil, fmt.Errorf("unit_price amount is required at index %d", i)
-			}
-		}
-
-		currency, ok := unitPriceRaw["currency"].(string)
-		if !ok || currency == "" {
-			currency = "SEK" // Default currency
-		}
-
-		vatRate, ok := itemMap["vat_rate"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("item vat_rate is required at index %d", i)
-		}
-
 		items[i] = bokio.InvoiceItem{
-			Description: description,
-			Quantity:    quantity,
-			UnitPrice: bokio.Money{
-				Amount:   amount,
-				Currency: currency,
-			},
-			VATRate: vatRate,
+			Description: item.Description,
+			Quantity:    item.Quantity,
+			Price:       item.UnitPrice.Amount,
+			VatRate:     item.VATRate,
 		}
 	}
 
 	request := &bokio.CreateInvoiceRequest{
-		CustomerID: customerID,
+		CustomerID: params.CustomerID,
 		Items:      items,
 	}
 
 	// Optional fields
-	if date, ok := params["date"].(string); ok && date != "" {
+	if params.Date != nil {
 		// In a real implementation, parse the date string to time.Time
 		// For now, we'll leave it as nil and let the API handle it
 	}
 
-	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
+	if params.DueDate != nil {
 		// In a real implementation, parse the date string to time.Time
 		// For now, we'll leave it as nil and let the API handle it
 	}
 
-	if description, ok := params["description"].(string); ok {
-		request.Description = description
+	if params.Description != nil {
+		request.Notes = *params.Description
 	}
 
 	return request, nil
+}
+
+// buildUpdateInvoiceRequest builds an update request from typed parameters
+func buildUpdateInvoiceRequest(params UpdateInvoiceParams) map[string]interface{} {
+	updateRequest := make(map[string]interface{})
+	
+	if params.CustomerID != nil && *params.CustomerID != "" {
+		updateRequest["customer_id"] = *params.CustomerID
+	}
+	
+	if params.Date != nil && *params.Date != "" {
+		updateRequest["date"] = *params.Date
+	}
+	
+	if params.DueDate != nil && *params.DueDate != "" {
+		updateRequest["due_date"] = *params.DueDate
+	}
+	
+	if params.Description != nil {
+		updateRequest["description"] = *params.Description
+	}
+
+	return updateRequest
 }

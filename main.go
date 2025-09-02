@@ -52,13 +52,13 @@ func run(ctx context.Context) error {
 	}
 
 	// Initialize Bokio API client
-	bokioClient, err := bokio.NewClient(config.BokioConfig)
+	bokioClient, err := bokio.NewClient(&config.BokioConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Bokio client: %w", err)
 	}
 
 	// Create MCP server
-	server := mcp.NewServer(serverName, serverVersion)
+	server := mcp.NewServer(serverName, serverVersion, nil)
 	
 	// Register tools with the server
 	if err := tools.RegisterAuthTools(server, bokioClient); err != nil {
@@ -84,24 +84,31 @@ func run(ctx context.Context) error {
 	slog.Info("Starting Bokio MCP server", 
 		"name", serverName, 
 		"version", serverVersion,
-		"bokio_base_url", config.BokioConfig.BaseURL)
+		"bokio_base_url", config.BokioConfig.BaseURL,
+		"read_only_mode", config.ReadOnly)
 
-	// Start the MCP server
-	return server.Serve(ctx)
+	// Create and start the MCP server with stdio transport
+	transport := mcp.NewStdioTransport()
+	return server.Run(ctx, transport)
 }
 
 // Config holds all application configuration
 type Config struct {
 	BokioConfig bokio.Config
+	ReadOnly    bool
 }
 
 // loadConfig loads configuration from environment variables
 func loadConfig() (*Config, error) {
+	// Parse read-only mode
+	readOnly := os.Getenv("BOKIO_READ_ONLY") == "true"
+	
 	bokioConfig := bokio.Config{
 		BaseURL:      getEnvWithDefault("BOKIO_BASE_URL", "https://api.bokio.se"),
 		ClientID:     os.Getenv("BOKIO_CLIENT_ID"),
 		ClientSecret: os.Getenv("BOKIO_CLIENT_SECRET"),
-		RedirectURL:  getEnvWithDefault("BOKIO_REDIRECT_URL", "http://localhost:8080/callback"),
+		RedirectURI:  getEnvWithDefault("BOKIO_REDIRECT_URL", "http://localhost:8080/callback"),
+		ReadOnly:     readOnly,
 	}
 
 	// Validate required configuration
@@ -114,6 +121,7 @@ func loadConfig() (*Config, error) {
 
 	return &Config{
 		BokioConfig: bokioConfig,
+		ReadOnly:    readOnly,
 	}, nil
 }
 

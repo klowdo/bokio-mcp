@@ -1,0 +1,111 @@
+⎿  Bokio MCP Server Implementation Plan
+
+     Project Overview
+
+     Create a Model Context Protocol (MCP) server in Go that integrates with the Bokio accounting API, providing AI assistants access to accounting operations like managing invoices, customers, journal entries, and uploads.
+
+     Architecture Design
+
+     - MCP Framework: Use the official Go SDK (github.com/modelcontextprotocol/go-sdk/mcp) for MCP implementation
+     - API Integration: Create a clean abstraction layer for Bokio API calls with OAuth2 authentication
+     - Tools Structure: Implement MCP tools for each major Bokio API endpoint group
+     - Configuration: Support environment-based configuration for API credentials and endpoints
+
+     Implementation Structure
+
+     Core Files
+
+     1. main.go - Entry point and MCP server setup
+     2. bokio/client.go - Bokio API client with OAuth2 authentication
+     3. bokio/types.go - Type definitions matching Bokio API schemas
+     4. tools/ - Directory containing individual MCP tool implementations:
+       - invoices.go - Invoice management tools
+       - customers.go - Customer management tools
+       - journal.go - Journal entry tools
+       - uploads.go - File upload tools
+       - auth.go - Authentication tools
+     5. go.mod - Go module definition with dependencies
+     6. flake.nix - Nix flake for reproducible builds
+
+     Development & Automation Files
+
+     Makefile for Schema Updates & Development
+
+     - Makefile - Development automation with targets for:
+       - update-schema: Download latest OpenAPI specs from Bokio GitHub
+       - generate-types: Generate Go types from OpenAPI specifications using oapi-codegen
+       - build: Build the MCP server binary
+       - test: Run all tests with coverage
+       - lint: Run golangci-lint for code quality
+       - dev: Run server in development mode with hot reload
+       - clean: Clean build artifacts and generated files
+       - deps: Update Go dependencies
+       - security: Run security scans (govulncheck, gosec)
+       - release-dry: Test GoReleaser configuration
+       - nix-build: Build using Nix flake
+       - pre-commit: Run all checks before committing
+
+     AI Development Guidance
+
+     - CLAUDE.md - Comprehensive guidance for future AI-assisted development:
+       - Project architecture and design patterns
+       - Code generation guidelines for new MCP tools
+       - Testing strategies and patterns
+       - Bokio API integration patterns
+       - OAuth2 flow implementation details
+       - Error handling conventions
+       - Logging and debugging practices
+       - Release process and versioning
+       - Common development commands and workflows
+       - Code style and formatting rules
+       - Security considerations and best practices
+
+     GitHub-Ready Documentation & Release System
+
+     Documentation Files
+
+     - README.md - Comprehensive GitHub-ready documentation
+     - CHANGELOG.md - Automated changelog generation
+     - LICENSE - MIT license
+     - .github/ISSUE_TEMPLATE/ - Bug report and feature request templates
+     - .github/PULL_REQUEST_TEMPLATE.md - PR template with checklist
+
+     Release System Configuration
+
+     - .goreleaser.yml - Multi-platform builds, GitHub releases, Homebrew tap, Docker images
+     - .github/workflows/release.yml - Automated releases on tag push
+     - .github/workflows/ci.yml - CI pipeline with testing, linting, security scanning
+     - .github/workflows/update-schema.yml - Automated schema updates via Makefile
+
+     Key MCP Tools to Implement
+
+     - Authentication: bokio_authenticate, bokio_get_connections
+     - Invoices: bokio_create_invoice, bokio_list_invoices, bokio_get_invoice, bokio_update_invoice
+     - Customers: bokio_create_customer, bokio_list_customers, bokio_get_customer, bokio_update_customer
+     - Journal Entries: bokio_create_journal_entry, bokio_list_journal_entries, bokio_reverse_journal_entry
+     - Uploads: bokio_upload_file, bokio_list_uploads, bokio_download_file
+     - Items: bokio_create_item, bokio_list_items, bokio_get_item
+     - Fiscal Years: bokio_get_fiscal_years, bokio_download_sie_file
+
+     Dependencies
+
+     - github.com/modelcontextprotocol/go-sdk/mcp - Official MCP Go SDK
+     - golang.org/x/oauth2 - OAuth2 client implementation
+     - github.com/go-resty/resty/v2 - HTTP client for API calls
+     - github.com/deepmap/oapi-codegen - OpenAPI code generation
+     - github.com/fsnotify/fsnotify - File watching for development mode
+
+     Nix Configuration
+
+     - Modern flake-based setup with Go 1.23+, GoReleaser, and oapi-codegen
+     - Development shell with all necessary build tools
+     - Reproducible build configuration following repository patterns
+     - Pre-commit hooks for code quality and formatting
+
+     Automation Features
+
+     - Schema Updates: Automated download and type generation from Bokio API specs
+     - Development Workflow: Hot reload, testing, linting, and security scanning
+     - Release Process: Tag-based releases with multi-platform binaries
+     - CI/CD Pipeline: Comprehensive testing and automated deployments
+     - Documentation: Auto-generated API docs and changelog updates

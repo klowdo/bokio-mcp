@@ -10,505 +10,574 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// ListCustomersParams defines the parameters for listing customers
+type ListCustomersParams struct {
+	Page    *int    `json:"page,omitempty"`
+	PerPage *int    `json:"per_page,omitempty"`
+	Search  *string `json:"search,omitempty"`
+}
+
+// ListCustomersResult defines the result of listing customers
+type ListCustomersResult struct {
+	Success    bool                   `json:"success"`
+	Data       []bokio.Customer       `json:"data,omitempty"`
+	Pagination interface{}            `json:"pagination,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+}
+
+// GetCustomerParams defines the parameters for getting a customer
+type GetCustomerParams struct {
+	ID string `json:"id"`
+}
+
+// GetCustomerResult defines the result of getting a customer
+type GetCustomerResult struct {
+	Success bool            `json:"success"`
+	Data    *bokio.Customer `json:"data,omitempty"`
+	Error   string          `json:"error,omitempty"`
+}
+
+// CreateCustomerParams defines the parameters for creating a customer
+type CreateCustomerParams struct {
+	Name               string         `json:"name"`
+	Email              *string        `json:"email,omitempty"`
+	Phone              *string        `json:"phone,omitempty"`
+	OrganizationNumber *string        `json:"organization_number,omitempty"`
+	VATNumber          *string        `json:"vat_number,omitempty"`
+	Address            *AddressParams `json:"address,omitempty"`
+	PaymentTerms       *int           `json:"payment_terms,omitempty"`
+}
+
+// AddressParams defines the parameters for an address
+type AddressParams struct {
+	Street     *string `json:"street,omitempty"`
+	PostalCode *string `json:"postal_code,omitempty"`
+	City       *string `json:"city,omitempty"`
+	Country    *string `json:"country,omitempty"`
+}
+
+// CreateCustomerResult defines the result of creating a customer
+type CreateCustomerResult struct {
+	Success bool            `json:"success"`
+	Data    *bokio.Customer `json:"data,omitempty"`
+	Message string          `json:"message,omitempty"`
+	Error   string          `json:"error,omitempty"`
+}
+
+// UpdateCustomerParams defines the parameters for updating a customer
+type UpdateCustomerParams struct {
+	ID                 string         `json:"id"`
+	Name               *string        `json:"name,omitempty"`
+	Email              *string        `json:"email,omitempty"`
+	Phone              *string        `json:"phone,omitempty"`
+	OrganizationNumber *string        `json:"organization_number,omitempty"`
+	VATNumber          *string        `json:"vat_number,omitempty"`
+	Address            *AddressParams `json:"address,omitempty"`
+	PaymentTerms       *int           `json:"payment_terms,omitempty"`
+}
+
+// UpdateCustomerResult defines the result of updating a customer
+type UpdateCustomerResult struct {
+	Success bool            `json:"success"`
+	Data    *bokio.Customer `json:"data,omitempty"`
+	Message string          `json:"message,omitempty"`
+	Error   string          `json:"error,omitempty"`
+}
+
 // RegisterCustomerTools registers customer-related MCP tools
 func RegisterCustomerTools(server *mcp.Server, client *bokio.Client) error {
 	// Register bokio_list_customers tool
-	if err := server.RegisterTool("bokio_list_customers", mcp.Tool{
-		Name: "bokio_list_customers",
-		Description: "List customers with optional filtering and pagination",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"page": map[string]interface{}{
-					"type": "integer",
-					"description": "Page number for pagination (default: 1)",
-					"minimum": 1,
+	listCustomersTool := mcp.NewServerTool[ListCustomersParams, ListCustomersResult](
+		"bokio_list_customers",
+		"List customers with optional filtering and pagination",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCustomersParams]) (*mcp.CallToolResultFor[ListCustomersResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[ListCustomersResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			// Build query parameters
+			queryParams := make(map[string]string)
+			
+			if params.Arguments.Page != nil {
+				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
+			}
+			
+			if params.Arguments.PerPage != nil {
+				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
+			}
+			
+			if params.Arguments.Search != nil && *params.Arguments.Search != "" {
+				queryParams["search"] = *params.Arguments.Search
+			}
+
+			// Construct URL with query parameters
+			path := "/customers"
+			if len(queryParams) > 0 {
+				path += "?"
+				first := true
+				for key, value := range queryParams {
+					if !first {
+						path += "&"
+					}
+					path += key + "=" + value
+					first = false
+				}
+			}
+
+			resp, err := client.GET(ctx, path)
+			if err != nil {
+				return &mcp.CallToolResultFor[ListCustomersResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to list customers: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[ListCustomersResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var customerList bokio.CustomersResponse
+			if err := json.Unmarshal(resp.Body(), &customerList); err != nil {
+				return &mcp.CallToolResultFor[ListCustomersResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[ListCustomersResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Found %d customers", len(customerList.Items)),
+					},
 				},
-				"per_page": map[string]interface{}{
-					"type": "integer",
-					"description": "Number of items per page (default: 25, max: 100)",
-					"minimum": 1,
-					"maximum": 100,
-				},
-				"search": map[string]interface{}{
-					"type": "string",
-					"description": "Search customers by name or email",
-				},
-			},
+			}, nil
 		},
-		Handler: createListCustomersHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_list_customers tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("page",
+				mcp.Description("Page number for pagination (default: 1)"),
+			),
+			mcp.Property("per_page",
+				mcp.Description("Number of items per page (default: 25, max: 100)"),
+			),
+			mcp.Property("search",
+				mcp.Description("Search customers by name or email"),
+			),
+		),
+	)
+	
+	server.AddTools(listCustomersTool)
 
 	// Register bokio_get_customer tool
-	if err := server.RegisterTool("bokio_get_customer", mcp.Tool{
-		Name: "bokio_get_customer",
-		Description: "Get a specific customer by ID",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
-					"type": "string",
-					"description": "Customer ID",
+	getCustomerTool := mcp.NewServerTool[GetCustomerParams, GetCustomerResult](
+		"bokio_get_customer",
+		"Get a specific customer by ID",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetCustomerParams]) (*mcp.CallToolResultFor[GetCustomerResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[GetCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			id := params.Arguments.ID
+			if id == "" {
+				return &mcp.CallToolResultFor[GetCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Customer ID is required",
+						},
+					},
+				}, fmt.Errorf("customer ID is required")
+			}
+
+			resp, err := client.GET(ctx, "/customers/"+id)
+			if err != nil {
+				return &mcp.CallToolResultFor[GetCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to get customer: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() == http.StatusNotFound {
+				return &mcp.CallToolResultFor[GetCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Customer not found",
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[GetCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var customer bokio.Customer
+			if err := json.Unmarshal(resp.Body(), &customer); err != nil {
+				return &mcp.CallToolResultFor[GetCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[GetCustomerResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Customer: %s (ID: %s)", customer.Name, customer.ID),
+					},
 				},
-			},
-			"required": []string{"id"},
+			}, nil
 		},
-		Handler: createGetCustomerHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_get_customer tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("id",
+				mcp.Description("Customer ID"),
+				mcp.Required(true),
+			),
+		),
+	)
+	
+	server.AddTools(getCustomerTool)
 
 	// Register bokio_create_customer tool
-	if err := server.RegisterTool("bokio_create_customer", mcp.Tool{
-		Name: "bokio_create_customer",
-		Description: "Create a new customer",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"name": map[string]interface{}{
-					"type": "string",
-					"description": "Customer name",
-				},
-				"email": map[string]interface{}{
-					"type": "string",
-					"format": "email",
-					"description": "Customer email address",
-				},
-				"phone": map[string]interface{}{
-					"type": "string",
-					"description": "Customer phone number",
-				},
-				"organization_number": map[string]interface{}{
-					"type": "string",
-					"description": "Organization number",
-				},
-				"vat_number": map[string]interface{}{
-					"type": "string",
-					"description": "VAT number",
-				},
-				"address": map[string]interface{}{
-					"type": "object",
-					"description": "Customer address",
-					"properties": map[string]interface{}{
-						"street": map[string]interface{}{
-							"type": "string",
-							"description": "Street address",
-						},
-						"postal_code": map[string]interface{}{
-							"type": "string",
-							"description": "Postal code",
-						},
-						"city": map[string]interface{}{
-							"type": "string",
-							"description": "City",
-						},
-						"country": map[string]interface{}{
-							"type": "string",
-							"description": "Country",
+	createCustomerTool := mcp.NewServerTool[CreateCustomerParams, CreateCustomerResult](
+		"bokio_create_customer",
+		"Create a new customer",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CreateCustomerParams]) (*mcp.CallToolResultFor[CreateCustomerResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[CreateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
 						},
 					},
+				}, nil
+			}
+
+			// Parse and validate the request
+			request, err := parseCreateCustomerRequestFromParams(params.Arguments)
+			if err != nil {
+				return &mcp.CallToolResultFor[CreateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Invalid request: %v", err),
+						},
+					},
+				}, fmt.Errorf("invalid request: %w", err)
+			}
+
+			resp, err := client.POST(ctx, "/customers", request)
+			if err != nil {
+				return &mcp.CallToolResultFor[CreateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to create customer: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[CreateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var customer bokio.Customer
+			if err := json.Unmarshal(resp.Body(), &customer); err != nil {
+				return &mcp.CallToolResultFor[CreateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[CreateCustomerResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Customer created successfully: %s (ID: %s)", customer.Name, customer.ID),
+					},
 				},
-				"payment_terms": map[string]interface{}{
-					"type": "integer",
-					"description": "Payment terms in days",
-					"minimum": 0,
-				},
-			},
-			"required": []string{"name"},
+			}, nil
 		},
-		Handler: createCreateCustomerHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_create_customer tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("name",
+				mcp.Description("Customer name"),
+				mcp.Required(true),
+			),
+			mcp.Property("email",
+				mcp.Description("Customer email address"),
+				),
+			mcp.Property("phone",
+				mcp.Description("Customer phone number"),
+			),
+			mcp.Property("organization_number",
+				mcp.Description("Organization number"),
+			),
+			mcp.Property("vat_number",
+				mcp.Description("VAT number"),
+			),
+			mcp.Property("address",
+				mcp.Description("Customer address"),
+			),
+			mcp.Property("payment_terms",
+				mcp.Description("Payment terms in days"),
+				),
+		),
+	)
+	
+	server.AddTools(createCustomerTool)
 
 	// Register bokio_update_customer tool
-	if err := server.RegisterTool("bokio_update_customer", mcp.Tool{
-		Name: "bokio_update_customer",
-		Description: "Update an existing customer",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
-					"type": "string",
-					"description": "Customer ID",
-				},
-				"name": map[string]interface{}{
-					"type": "string",
-					"description": "Customer name",
-				},
-				"email": map[string]interface{}{
-					"type": "string",
-					"format": "email",
-					"description": "Customer email address",
-				},
-				"phone": map[string]interface{}{
-					"type": "string",
-					"description": "Customer phone number",
-				},
-				"organization_number": map[string]interface{}{
-					"type": "string",
-					"description": "Organization number",
-				},
-				"vat_number": map[string]interface{}{
-					"type": "string",
-					"description": "VAT number",
-				},
-				"address": map[string]interface{}{
-					"type": "object",
-					"description": "Customer address",
-					"properties": map[string]interface{}{
-						"street": map[string]interface{}{
-							"type": "string",
-							"description": "Street address",
-						},
-						"postal_code": map[string]interface{}{
-							"type": "string",
-							"description": "Postal code",
-						},
-						"city": map[string]interface{}{
-							"type": "string",
-							"description": "City",
-						},
-						"country": map[string]interface{}{
-							"type": "string",
-							"description": "Country",
+	updateCustomerTool := mcp.NewServerTool[UpdateCustomerParams, UpdateCustomerResult](
+		"bokio_update_customer",
+		"Update an existing customer",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[UpdateCustomerParams]) (*mcp.CallToolResultFor[UpdateCustomerResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[UpdateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
 						},
 					},
+				}, nil
+			}
+
+			id := params.Arguments.ID
+			if id == "" {
+				return &mcp.CallToolResultFor[UpdateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Customer ID is required",
+						},
+					},
+				}, fmt.Errorf("customer ID is required")
+			}
+
+			// Parse update request (only include provided fields)
+			updateRequest := buildUpdateCustomerRequest(params.Arguments)
+
+			resp, err := client.PATCH(ctx, "/customers/"+id, updateRequest)
+			if err != nil {
+				return &mcp.CallToolResultFor[UpdateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to update customer: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() == http.StatusNotFound {
+				return &mcp.CallToolResultFor[UpdateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Customer not found",
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[UpdateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var customer bokio.Customer
+			if err := json.Unmarshal(resp.Body(), &customer); err != nil {
+				return &mcp.CallToolResultFor[UpdateCustomerResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[UpdateCustomerResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Customer updated successfully: %s (ID: %s)", customer.Name, customer.ID),
+					},
 				},
-				"payment_terms": map[string]interface{}{
-					"type": "integer",
-					"description": "Payment terms in days",
-					"minimum": 0,
-				},
-			},
-			"required": []string{"id"},
+			}, nil
 		},
-		Handler: createUpdateCustomerHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_update_customer tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("id",
+				mcp.Description("Customer ID"),
+				mcp.Required(true),
+			),
+			mcp.Property("name",
+				mcp.Description("Customer name"),
+			),
+			mcp.Property("email",
+				mcp.Description("Customer email address"),
+				),
+			mcp.Property("phone",
+				mcp.Description("Customer phone number"),
+			),
+			mcp.Property("organization_number",
+				mcp.Description("Organization number"),
+			),
+			mcp.Property("vat_number",
+				mcp.Description("VAT number"),
+			),
+			mcp.Property("address",
+				mcp.Description("Customer address"),
+			),
+			mcp.Property("payment_terms",
+				mcp.Description("Payment terms in days"),
+				),
+		),
+	)
+	
+	server.AddTools(updateCustomerTool)
 
 	return nil
 }
 
-// createListCustomersHandler creates the handler for the list customers tool
-func createListCustomersHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
 
-		// Build query parameters
-		queryParams := make(map[string]string)
-		
-		if page, ok := params["page"]; ok {
-			queryParams["page"] = fmt.Sprintf("%v", page)
-		}
-		
-		if perPage, ok := params["per_page"]; ok {
-			queryParams["per_page"] = fmt.Sprintf("%v", perPage)
-		}
-		
-		if search, ok := params["search"].(string); ok && search != "" {
-			queryParams["search"] = search
-		}
 
-		// Construct URL with query parameters
-		path := "/customers"
-		if len(queryParams) > 0 {
-			path += "?"
-			first := true
-			for key, value := range queryParams {
-				if !first {
-					path += "&"
-				}
-				path += key + "=" + value
-				first = false
-			}
-		}
 
-		resp, err := client.Get(ctx, path)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to list customers: %v", err),
-			}, nil
-		}
 
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var customerList bokio.ListResponse[bokio.Customer]
-		if err := json.Unmarshal(resp.Body(), &customerList); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": customerList.Data,
-			"pagination": customerList.Meta,
-		}, nil
-	}
-}
-
-// createGetCustomerHandler creates the handler for the get customer tool
-func createGetCustomerHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		id, ok := params["id"].(string)
-		if !ok || id == "" {
-			return nil, fmt.Errorf("customer ID is required")
-		}
-
-		resp, err := client.Get(ctx, "/customers/"+id)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to get customer: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() == http.StatusNotFound {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Customer not found",
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var customer bokio.Customer
-		if err := json.Unmarshal(resp.Body(), &customer); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": customer,
-		}, nil
-	}
-}
-
-// createCreateCustomerHandler creates the handler for the create customer tool
-func createCreateCustomerHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		// Parse and validate the request
-		request, err := parseCreateCustomerRequest(params)
-		if err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
-
-		resp, err := client.Post(ctx, "/customers", request)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to create customer: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var customer bokio.Customer
-		if err := json.Unmarshal(resp.Body(), &customer); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": customer,
-			"message": "Customer created successfully",
-		}, nil
-	}
-}
-
-// createUpdateCustomerHandler creates the handler for the update customer tool
-func createUpdateCustomerHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		id, ok := params["id"].(string)
-		if !ok || id == "" {
-			return nil, fmt.Errorf("customer ID is required")
-		}
-
-		// Parse update request (only include provided fields)
-		updateRequest := make(map[string]interface{})
-		
-		if name, ok := params["name"].(string); ok && name != "" {
-			updateRequest["name"] = name
-		}
-		
-		if email, ok := params["email"].(string); ok {
-			updateRequest["email"] = email
-		}
-		
-		if phone, ok := params["phone"].(string); ok {
-			updateRequest["phone"] = phone
-		}
-		
-		if orgNumber, ok := params["organization_number"].(string); ok {
-			updateRequest["organization_number"] = orgNumber
-		}
-		
-		if vatNumber, ok := params["vat_number"].(string); ok {
-			updateRequest["vat_number"] = vatNumber
-		}
-		
-		if paymentTerms, ok := params["payment_terms"]; ok {
-			updateRequest["payment_terms"] = paymentTerms
-		}
-
-		if addressRaw, ok := params["address"].(map[string]interface{}); ok {
-			address := &bokio.Address{}
-			if street, ok := addressRaw["street"].(string); ok {
-				address.Street = street
-			}
-			if postalCode, ok := addressRaw["postal_code"].(string); ok {
-				address.PostalCode = postalCode
-			}
-			if city, ok := addressRaw["city"].(string); ok {
-				address.City = city
-			}
-			if country, ok := addressRaw["country"].(string); ok {
-				address.Country = country
-			}
-			updateRequest["address"] = address
-		}
-
-		resp, err := client.Patch(ctx, "/customers/"+id, updateRequest)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to update customer: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() == http.StatusNotFound {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Customer not found",
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var customer bokio.Customer
-		if err := json.Unmarshal(resp.Body(), &customer); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": customer,
-			"message": "Customer updated successfully",
-		}, nil
-	}
-}
-
-// parseCreateCustomerRequest parses the parameters into a CreateCustomerRequest
-func parseCreateCustomerRequest(params map[string]interface{}) (*bokio.CreateCustomerRequest, error) {
-	name, ok := params["name"].(string)
-	if !ok || name == "" {
+// parseCreateCustomerRequestFromParams parses the new typed parameters into a CreateCustomerRequest
+func parseCreateCustomerRequestFromParams(params CreateCustomerParams) (*bokio.CreateCustomerRequest, error) {
+	if params.Name == "" {
 		return nil, fmt.Errorf("customer name is required")
 	}
 
 	request := &bokio.CreateCustomerRequest{
-		Name: name,
+		Name: params.Name,
 	}
 
 	// Optional fields
-	if email, ok := params["email"].(string); ok {
-		request.Email = email
+	if params.Email != nil {
+		request.Email = *params.Email
 	}
 
-	if phone, ok := params["phone"].(string); ok {
-		request.Phone = phone
+	if params.Phone != nil {
+		request.Phone = *params.Phone
 	}
 
-	if orgNumber, ok := params["organization_number"].(string); ok {
-		request.OrganizationNumber = orgNumber
+	if params.OrganizationNumber != nil {
+		request.OrgNumber = *params.OrganizationNumber
 	}
 
-	if vatNumber, ok := params["vat_number"].(string); ok {
-		request.VATNumber = vatNumber
+	if params.VATNumber != nil {
+		request.VatNumber = *params.VATNumber
 	}
 
-	if paymentTerms, ok := params["payment_terms"].(float64); ok {
-		request.PaymentTerms = int(paymentTerms)
-	} else if paymentTerms, ok := params["payment_terms"].(int); ok {
-		request.PaymentTerms = paymentTerms
+	if params.PaymentTerms != nil {
+		request.PaymentTerms = string(*params.PaymentTerms)
 	}
 
-	if addressRaw, ok := params["address"].(map[string]interface{}); ok {
+	if params.Address != nil {
 		address := &bokio.Address{}
-		if street, ok := addressRaw["street"].(string); ok {
-			address.Street = street
+		if params.Address.Street != nil {
+			address.Line1 = *params.Address.Street
 		}
-		if postalCode, ok := addressRaw["postal_code"].(string); ok {
-			address.PostalCode = postalCode
+		if params.Address.PostalCode != nil {
+			address.PostalCode = *params.Address.PostalCode
 		}
-		if city, ok := addressRaw["city"].(string); ok {
-			address.City = city
+		if params.Address.City != nil {
+			address.City = *params.Address.City
 		}
-		if country, ok := addressRaw["country"].(string); ok {
-			address.Country = country
+		if params.Address.Country != nil {
+			address.Country = *params.Address.Country
 		}
 		request.Address = address
 	}
 
 	return request, nil
+}
+
+// buildUpdateCustomerRequest builds an update request from typed parameters
+func buildUpdateCustomerRequest(params UpdateCustomerParams) map[string]interface{} {
+	updateRequest := make(map[string]interface{})
+	
+	if params.Name != nil && *params.Name != "" {
+		updateRequest["name"] = *params.Name
+	}
+	
+	if params.Email != nil {
+		updateRequest["email"] = *params.Email
+	}
+	
+	if params.Phone != nil {
+		updateRequest["phone"] = *params.Phone
+	}
+	
+	if params.OrganizationNumber != nil {
+		updateRequest["organization_number"] = *params.OrganizationNumber
+	}
+	
+	if params.VATNumber != nil {
+		updateRequest["vat_number"] = *params.VATNumber
+	}
+	
+	if params.PaymentTerms != nil {
+		updateRequest["payment_terms"] = *params.PaymentTerms
+	}
+
+	if params.Address != nil {
+		address := &bokio.Address{}
+		if params.Address.Street != nil {
+			address.Line1 = *params.Address.Street
+		}
+		if params.Address.PostalCode != nil {
+			address.PostalCode = *params.Address.PostalCode
+		}
+		if params.Address.City != nil {
+			address.City = *params.Address.City
+		}
+		if params.Address.Country != nil {
+			address.Country = *params.Address.Country
+		}
+		updateRequest["address"] = address
+	}
+
+	return updateRequest
 }

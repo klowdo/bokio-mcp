@@ -41,6 +41,9 @@ type Client struct {
 
 	// Logging
 	logger Logger
+	
+	// Security
+	readOnly bool // When true, prevents all write operations
 }
 
 // Config holds the configuration for the Bokio API client
@@ -62,6 +65,9 @@ type Config struct {
 
 	// Logging
 	Logger Logger
+	
+	// Security
+	ReadOnly bool // When true, prevents all write operations
 }
 
 // Logger interface for customizable logging
@@ -163,7 +169,7 @@ func NewClient(config *Config) (*Client, error) {
 	httpClient.SetBaseURL(config.BaseURL)
 	httpClient.SetTimeout(config.Timeout)
 	httpClient.SetRetryCount(config.MaxRetries)
-	httpClient.SetUserAgent(config.UserAgent)
+	httpClient.SetHeader("User-Agent", config.UserAgent)
 
 	// Add retry condition
 	httpClient.AddRetryCondition(func(r *resty.Response, err error) bool {
@@ -210,9 +216,23 @@ func NewClient(config *Config) (*Client, error) {
 		clientSecret: config.ClientSecret,
 		rateLimiter:  rateLimiter,
 		logger:       config.Logger,
+		readOnly:     config.ReadOnly,
 	}
 
 	return client, nil
+}
+
+// IsReadOnly returns true if the client is configured in read-only mode
+func (c *Client) IsReadOnly() bool {
+	return c.readOnly
+}
+
+// validateWriteOperation checks if write operations are allowed
+func (c *Client) validateWriteOperation(operation string) error {
+	if c.readOnly {
+		return fmt.Errorf("operation '%s' not allowed in read-only mode. Set BOKIO_READ_ONLY=false to enable write operations", operation)
+	}
+	return nil
 }
 
 // GetAuthorizationURL returns the URL for OAuth2 authorization
@@ -379,6 +399,13 @@ func (c *Client) ensureValidToken(ctx context.Context) error {
 
 // makeRequest performs a rate-limited HTTP request with proper authentication
 func (c *Client) makeRequest(ctx context.Context, method, path string, body interface{}) (*resty.Response, error) {
+	// Check read-only mode for write operations
+	if method != "GET" && method != "HEAD" && method != "OPTIONS" {
+		if err := c.validateWriteOperation(fmt.Sprintf("%s %s", method, path)); err != nil {
+			return nil, err
+		}
+	}
+	
 	// Rate limiting
 	if c.rateLimiter != nil {
 		select {

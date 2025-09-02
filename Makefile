@@ -4,7 +4,7 @@
 .PHONY: help update-schema generate-types build test lint dev clean deps security release-dry nix-build pre-commit install-tools run watch tag release info status profile benchmark format check-deps
 
 # Set shell and enable error checking
-SHELL := /bin/bash
+SHELL := $(shell which bash)
 .SHELLFLAGS := -euo pipefail -c
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules

@@ -5,512 +5,522 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/klowdo/bokio-mcp/bokio"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// ListJournalEntriesParams defines the parameters for listing journal entries
+type ListJournalEntriesParams struct {
+	Page        *int    `json:"page,omitempty"`
+	PerPage     *int    `json:"per_page,omitempty"`
+	FromDate    *string `json:"from_date,omitempty"`
+	ToDate      *string `json:"to_date,omitempty"`
+	AccountCode *string `json:"account_code,omitempty"`
+}
+
+// ListJournalEntriesResult defines the result of listing journal entries
+type ListJournalEntriesResult struct {
+	Success    bool                     `json:"success"`
+	Data       []bokio.JournalEntry     `json:"data,omitempty"`
+	Pagination interface{}              `json:"pagination,omitempty"`
+	Error      string                   `json:"error,omitempty"`
+}
+
+// JournalEntryLineParams defines the parameters for a journal entry line
+type JournalEntryLineParams struct {
+	AccountCode string           `json:"account_code"`
+	Description *string          `json:"description,omitempty"`
+	Debit       *MoneyParams     `json:"debit,omitempty"`
+	Credit      *MoneyParams     `json:"credit,omitempty"`
+}
+
+// CreateJournalEntryParams defines the parameters for creating a journal entry
+type CreateJournalEntryParams struct {
+	Date        string                    `json:"date"`
+	Description string                    `json:"description"`
+	Reference   *string                   `json:"reference,omitempty"`
+	Lines       []JournalEntryLineParams  `json:"lines"`
+}
+
+// CreateJournalEntryResult defines the result of creating a journal entry
+type CreateJournalEntryResult struct {
+	Success bool                 `json:"success"`
+	Data    *bokio.JournalEntry  `json:"data,omitempty"`
+	Message string               `json:"message,omitempty"`
+	Error   string               `json:"error,omitempty"`
+}
+
+// ReverseJournalEntryParams defines the parameters for reversing a journal entry
+type ReverseJournalEntryParams struct {
+	ID          string  `json:"id"`
+	Date        string  `json:"date"`
+	Description *string `json:"description,omitempty"`
+}
+
+// ReverseJournalEntryResult defines the result of reversing a journal entry
+type ReverseJournalEntryResult struct {
+	Success bool                 `json:"success"`
+	Data    *bokio.JournalEntry  `json:"data,omitempty"`
+	Message string               `json:"message,omitempty"`
+	Error   string               `json:"error,omitempty"`
+}
+
+// GetAccountsParams defines the parameters for getting accounts
+type GetAccountsParams struct {
+	Type *string `json:"type,omitempty"`
+}
+
+// GetAccountsResult defines the result of getting accounts
+type GetAccountsResult struct {
+	Success bool             `json:"success"`
+	Data    []bokio.Account  `json:"data,omitempty"`
+	Error   string           `json:"error,omitempty"`
+}
+
 // RegisterJournalTools registers journal entry-related MCP tools
 func RegisterJournalTools(server *mcp.Server, client *bokio.Client) error {
 	// Register bokio_list_journal_entries tool
-	if err := server.RegisterTool("bokio_list_journal_entries", mcp.Tool{
-		Name: "bokio_list_journal_entries",
-		Description: "List journal entries with optional filtering and pagination",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"page": map[string]interface{}{
-					"type": "integer",
-					"description": "Page number for pagination (default: 1)",
-					"minimum": 1,
-				},
-				"per_page": map[string]interface{}{
-					"type": "integer",
-					"description": "Number of items per page (default: 25, max: 100)",
-					"minimum": 1,
-					"maximum": 100,
-				},
-				"from_date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Filter entries from this date (YYYY-MM-DD)",
-				},
-				"to_date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Filter entries to this date (YYYY-MM-DD)",
-				},
-				"account_code": map[string]interface{}{
-					"type": "string",
-					"description": "Filter by account code",
-				},
-			},
-		},
-		Handler: createListJournalEntriesHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_list_journal_entries tool: %w", err)
-	}
-
-	// Register bokio_create_journal_entry tool
-	if err := server.RegisterTool("bokio_create_journal_entry", mcp.Tool{
-		Name: "bokio_create_journal_entry",
-		Description: "Create a new journal entry with debit and credit lines",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Journal entry date (YYYY-MM-DD)",
-				},
-				"description": map[string]interface{}{
-					"type": "string",
-					"description": "Journal entry description",
-				},
-				"reference": map[string]interface{}{
-					"type": "string",
-					"description": "Optional reference number",
-				},
-				"lines": map[string]interface{}{
-					"type": "array",
-					"description": "Journal entry lines (must balance)",
-					"minItems": 2,
-					"items": map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"account_code": map[string]interface{}{
-								"type": "string",
-								"description": "Account code from chart of accounts",
-							},
-							"description": map[string]interface{}{
-								"type": "string",
-								"description": "Line description",
-							},
-							"debit": map[string]interface{}{
-								"type": "object",
-								"description": "Debit amount (exclusive with credit)",
-								"properties": map[string]interface{}{
-									"amount": map[string]interface{}{
-										"type": "number",
-										"minimum": 0,
-									},
-									"currency": map[string]interface{}{
-										"type": "string",
-										"default": "SEK",
-									},
-								},
-								"required": []string{"amount"},
-							},
-							"credit": map[string]interface{}{
-								"type": "object",
-								"description": "Credit amount (exclusive with debit)",
-								"properties": map[string]interface{}{
-									"amount": map[string]interface{}{
-										"type": "number",
-										"minimum": 0,
-									},
-									"currency": map[string]interface{}{
-										"type": "string",
-										"default": "SEK",
-									},
-								},
-								"required": []string{"amount"},
-							},
-						},
-						"required": []string{"account_code"},
-						"oneOf": []map[string]interface{}{
-							{"required": []string{"debit"}},
-							{"required": []string{"credit"}},
+	listJournalEntriesTool := mcp.NewServerTool[ListJournalEntriesParams, ListJournalEntriesResult](
+		"bokio_list_journal_entries",
+		"List journal entries with optional filtering and pagination",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ListJournalEntriesParams]) (*mcp.CallToolResultFor[ListJournalEntriesResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[ListJournalEntriesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
 						},
 					},
+				}, nil
+			}
+
+			// Build query parameters
+			queryParams := make(map[string]string)
+			
+			if params.Arguments.Page != nil {
+				queryParams["page"] = fmt.Sprintf("%d", *params.Arguments.Page)
+			}
+			
+			if params.Arguments.PerPage != nil {
+				queryParams["per_page"] = fmt.Sprintf("%d", *params.Arguments.PerPage)
+			}
+			
+			if params.Arguments.FromDate != nil && *params.Arguments.FromDate != "" {
+				queryParams["from_date"] = *params.Arguments.FromDate
+			}
+			
+			if params.Arguments.ToDate != nil && *params.Arguments.ToDate != "" {
+				queryParams["to_date"] = *params.Arguments.ToDate
+			}
+			
+			if params.Arguments.AccountCode != nil && *params.Arguments.AccountCode != "" {
+				queryParams["account_code"] = *params.Arguments.AccountCode
+			}
+
+			// Construct URL with query parameters
+			path := "/journal-entries"
+			if len(queryParams) > 0 {
+				path += "?"
+				first := true
+				for key, value := range queryParams {
+					if !first {
+						path += "&"
+					}
+					path += key + "=" + value
+					first = false
+				}
+			}
+
+			resp, err := client.GET(ctx, path)
+			if err != nil {
+				return &mcp.CallToolResultFor[ListJournalEntriesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to list journal entries: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[ListJournalEntriesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var journalEntries bokio.JournalEntriesResponse
+			if err := json.Unmarshal(resp.Body(), &journalEntries); err != nil {
+				return &mcp.CallToolResultFor[ListJournalEntriesResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[ListJournalEntriesResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Found %d journal entries", len(journalEntries.Items)),
+					},
 				},
-			},
-			"required": []string{"date", "description", "lines"},
+			}, nil
 		},
-		Handler: createCreateJournalEntryHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_create_journal_entry tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("page",
+				mcp.Description("Page number for pagination (default: 1)"),
+					),
+			mcp.Property("per_page",
+				mcp.Description("Number of items per page (default: 25, max: 100)"),
+							),
+			mcp.Property("from_date",
+				mcp.Description("Filter entries from this date (YYYY-MM-DD)"),
+					),
+			mcp.Property("to_date",
+				mcp.Description("Filter entries to this date (YYYY-MM-DD)"),
+					),
+			mcp.Property("account_code",
+				mcp.Description("Filter by account code"),
+			),
+		),
+	)
+	
+	server.AddTools(listJournalEntriesTool)
+
+	// Register bokio_create_journal_entry tool
+	createJournalEntryTool := mcp.NewServerTool[CreateJournalEntryParams, CreateJournalEntryResult](
+		"bokio_create_journal_entry",
+		"Create a new journal entry with debit and credit lines",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CreateJournalEntryParams]) (*mcp.CallToolResultFor[CreateJournalEntryResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			// Parse and validate the request
+			request, err := parseCreateJournalEntryRequestFromParams(params.Arguments)
+			if err != nil {
+				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Invalid request: %v", err),
+						},
+					},
+				}, fmt.Errorf("invalid request: %w", err)
+			}
+
+			// Validate that the entry balances
+			if err := validateJournalEntryBalanceFromTyped(request); err != nil {
+				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Journal entry validation failed: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			resp, err := client.POST(ctx, "/journal-entries", request)
+			if err != nil {
+				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to create journal entry: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var journalEntry bokio.JournalEntry
+			if err := json.Unmarshal(resp.Body(), &journalEntry); err != nil {
+				return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[CreateJournalEntryResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Journal entry created successfully: %s (ID: %s)", journalEntry.Title, journalEntry.ID),
+					},
+				},
+			}, nil
+		},
+		mcp.Input(
+			mcp.Property("date",
+				mcp.Description("Journal entry date (YYYY-MM-DD)"),
+						mcp.Required(true),
+			),
+			mcp.Property("description",
+				mcp.Description("Journal entry description"),
+				mcp.Required(true),
+			),
+			mcp.Property("reference",
+				mcp.Description("Optional reference number"),
+			),
+			mcp.Property("lines",
+				mcp.Description("Journal entry lines (must balance, minimum 2)"),
+				mcp.Required(true),
+			),
+		),
+	)
+	
+	server.AddTools(createJournalEntryTool)
 
 	// Register bokio_reverse_journal_entry tool
-	if err := server.RegisterTool("bokio_reverse_journal_entry", mcp.Tool{
-		Name: "bokio_reverse_journal_entry",
-		Description: "Create a reversing journal entry for an existing entry",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
-					"type": "string",
-					"description": "Original journal entry ID to reverse",
+	reverseJournalEntryTool := mcp.NewServerTool[ReverseJournalEntryParams, ReverseJournalEntryResult](
+		"bokio_reverse_journal_entry",
+		"Create a reversing journal entry for an existing entry",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ReverseJournalEntryParams]) (*mcp.CallToolResultFor[ReverseJournalEntryResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			id := params.Arguments.ID
+			if id == "" {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Journal entry ID is required",
+						},
+					},
+				}, fmt.Errorf("journal entry ID is required")
+			}
+
+			date := params.Arguments.Date
+			if date == "" {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Reversal date is required",
+						},
+					},
+				}, fmt.Errorf("reversal date is required")
+			}
+
+			reversalRequest := map[string]interface{}{
+				"date": date,
+			}
+
+			if params.Arguments.Description != nil && *params.Arguments.Description != "" {
+				reversalRequest["description"] = *params.Arguments.Description
+			}
+
+			resp, err := client.POST(ctx, "/journal-entries/"+id+"/reverse", reversalRequest)
+			if err != nil {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to reverse journal entry: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() == http.StatusNotFound {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Journal entry not found",
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var journalEntry bokio.JournalEntry
+			if err := json.Unmarshal(resp.Body(), &journalEntry); err != nil {
+				return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[ReverseJournalEntryResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Journal entry reversed successfully: %s (ID: %s)", journalEntry.Title, journalEntry.ID),
+					},
 				},
-				"date": map[string]interface{}{
-					"type": "string",
-					"format": "date",
-					"description": "Date for the reversing entry (YYYY-MM-DD)",
-				},
-				"description": map[string]interface{}{
-					"type": "string",
-					"description": "Optional description for the reversing entry",
-				},
-			},
-			"required": []string{"id", "date"},
+			}, nil
 		},
-		Handler: createReverseJournalEntryHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_reverse_journal_entry tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("id",
+				mcp.Description("Original journal entry ID to reverse"),
+				mcp.Required(true),
+			),
+			mcp.Property("date",
+				mcp.Description("Date for the reversing entry (YYYY-MM-DD)"),
+						mcp.Required(true),
+			),
+			mcp.Property("description",
+				mcp.Description("Optional description for the reversing entry"),
+			),
+		),
+	)
+	
+	server.AddTools(reverseJournalEntryTool)
 
 	// Register bokio_get_accounts tool
-	if err := server.RegisterTool("bokio_get_accounts", mcp.Tool{
-		Name: "bokio_get_accounts",
-		Description: "Get chart of accounts to see available account codes",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"type": map[string]interface{}{
-					"type": "string",
-					"description": "Filter by account type",
-					"enum": []string{"asset", "liability", "equity", "revenue", "expense"},
+	getAccountsTool := mcp.NewServerTool[GetAccountsParams, GetAccountsResult](
+		"bokio_get_accounts",
+		"Get chart of accounts to see available account codes",
+		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetAccountsParams]) (*mcp.CallToolResultFor[GetAccountsResult], error) {
+			if !client.IsAuthenticated() {
+				return &mcp.CallToolResultFor[GetAccountsResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: "Not authenticated. Use bokio_authenticate first.",
+						},
+					},
+				}, nil
+			}
+
+			path := "/accounts"
+			if params.Arguments.Type != nil && *params.Arguments.Type != "" {
+				path += "?type=" + *params.Arguments.Type
+			}
+
+			resp, err := client.GET(ctx, path)
+			if err != nil {
+				return &mcp.CallToolResultFor[GetAccountsResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to get accounts: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			if resp.StatusCode() != http.StatusOK {
+				return &mcp.CallToolResultFor[GetAccountsResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
+						},
+					},
+				}, nil
+			}
+
+			var accounts []bokio.Account
+			if err := json.Unmarshal(resp.Body(), &accounts); err != nil {
+				return &mcp.CallToolResultFor[GetAccountsResult]{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("Failed to parse response: %v", err),
+						},
+					},
+				}, nil
+			}
+
+			return &mcp.CallToolResultFor[GetAccountsResult]{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Found %d accounts", len(accounts)),
+					},
 				},
-			},
+			}, nil
 		},
-		Handler: createGetAccountsHandler(client),
-	}); err != nil {
-		return fmt.Errorf("failed to register bokio_get_accounts tool: %w", err)
-	}
+		mcp.Input(
+			mcp.Property("type",
+				mcp.Description("Filter by account type"),
+					),
+		),
+	)
+	
+	server.AddTools(getAccountsTool)
 
 	return nil
 }
 
-// createListJournalEntriesHandler creates the handler for the list journal entries tool
-func createListJournalEntriesHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
 
-		// Build query parameters
-		queryParams := make(map[string]string)
-		
-		if page, ok := params["page"]; ok {
-			queryParams["page"] = fmt.Sprintf("%v", page)
-		}
-		
-		if perPage, ok := params["per_page"]; ok {
-			queryParams["per_page"] = fmt.Sprintf("%v", perPage)
-		}
-		
-		if fromDate, ok := params["from_date"].(string); ok && fromDate != "" {
-			queryParams["from_date"] = fromDate
-		}
-		
-		if toDate, ok := params["to_date"].(string); ok && toDate != "" {
-			queryParams["to_date"] = toDate
-		}
-		
-		if accountCode, ok := params["account_code"].(string); ok && accountCode != "" {
-			queryParams["account_code"] = accountCode
-		}
 
-		// Construct URL with query parameters
-		path := "/journal-entries"
-		if len(queryParams) > 0 {
-			path += "?"
-			first := true
-			for key, value := range queryParams {
-				if !first {
-					path += "&"
-				}
-				path += key + "=" + value
-				first = false
-			}
-		}
 
-		resp, err := client.Get(ctx, path)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to list journal entries: %v", err),
-			}, nil
-		}
 
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var journalEntries bokio.ListResponse[bokio.JournalEntry]
-		if err := json.Unmarshal(resp.Body(), &journalEntries); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": journalEntries.Data,
-			"pagination": journalEntries.Meta,
-		}, nil
-	}
-}
-
-// createCreateJournalEntryHandler creates the handler for the create journal entry tool
-func createCreateJournalEntryHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		// Parse and validate the request
-		request, err := parseCreateJournalEntryRequest(params)
-		if err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
-
-		// Validate that the entry balances
-		if err := validateJournalEntryBalance(request); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Journal entry validation failed: %v", err),
-			}, nil
-		}
-
-		resp, err := client.Post(ctx, "/journal-entries", request)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to create journal entry: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var journalEntry bokio.JournalEntry
-		if err := json.Unmarshal(resp.Body(), &journalEntry); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": journalEntry,
-			"message": "Journal entry created successfully",
-		}, nil
-	}
-}
-
-// createReverseJournalEntryHandler creates the handler for the reverse journal entry tool
-func createReverseJournalEntryHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		id, ok := params["id"].(string)
-		if !ok || id == "" {
-			return nil, fmt.Errorf("journal entry ID is required")
-		}
-
-		date, ok := params["date"].(string)
-		if !ok || date == "" {
-			return nil, fmt.Errorf("reversal date is required")
-		}
-
-		reversalRequest := map[string]interface{}{
-			"date": date,
-		}
-
-		if description, ok := params["description"].(string); ok && description != "" {
-			reversalRequest["description"] = description
-		}
-
-		resp, err := client.Post(ctx, "/journal-entries/"+id+"/reverse", reversalRequest)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to reverse journal entry: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() == http.StatusNotFound {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Journal entry not found",
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusCreated && resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var journalEntry bokio.JournalEntry
-		if err := json.Unmarshal(resp.Body(), &journalEntry); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": journalEntry,
-			"message": "Journal entry reversed successfully",
-		}, nil
-	}
-}
-
-// createGetAccountsHandler creates the handler for the get accounts tool
-func createGetAccountsHandler(client *bokio.Client) mcp.ToolHandler {
-	return func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-		if !client.IsAuthenticated() {
-			return map[string]interface{}{
-				"success": false,
-				"error": "Not authenticated. Use bokio_authenticate first.",
-			}, nil
-		}
-
-		path := "/accounts"
-		if accountType, ok := params["type"].(string); ok && accountType != "" {
-			path += "?type=" + accountType
-		}
-
-		resp, err := client.Get(ctx, path)
-		if err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to get accounts: %v", err),
-			}, nil
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("API error: %d - %s", resp.StatusCode(), resp.String()),
-			}, nil
-		}
-
-		var accounts []bokio.Account
-		if err := json.Unmarshal(resp.Body(), &accounts); err != nil {
-			return map[string]interface{}{
-				"success": false,
-				"error": fmt.Sprintf("Failed to parse response: %v", err),
-			}, nil
-		}
-
-		return map[string]interface{}{
-			"success": true,
-			"data": accounts,
-		}, nil
-	}
-}
-
-// parseCreateJournalEntryRequest parses the parameters into a CreateJournalEntryRequest
-func parseCreateJournalEntryRequest(params map[string]interface{}) (*bokio.CreateJournalEntryRequest, error) {
-	date, ok := params["date"].(string)
-	if !ok || date == "" {
+// parseCreateJournalEntryRequestFromParams parses the new typed parameters into a CreateJournalEntryRequest
+func parseCreateJournalEntryRequestFromParams(params CreateJournalEntryParams) (*bokio.CreateJournalEntryRequest, error) {
+	if params.Date == "" {
 		return nil, fmt.Errorf("date is required")
 	}
 
-	description, ok := params["description"].(string)
-	if !ok || description == "" {
+	if params.Description == "" {
 		return nil, fmt.Errorf("description is required")
 	}
 
-	linesRaw, ok := params["lines"].([]interface{})
-	if !ok || len(linesRaw) < 2 {
+	if len(params.Lines) < 2 {
 		return nil, fmt.Errorf("at least 2 journal lines are required")
 	}
 
-	lines := make([]bokio.JournalEntryLine, len(linesRaw))
-	for i, lineRaw := range linesRaw {
-		lineMap, ok := lineRaw.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("invalid line at index %d", i)
-		}
-
-		accountCode, ok := lineMap["account_code"].(string)
-		if !ok || accountCode == "" {
+	items := make([]bokio.JournalEntryItem, len(params.Lines))
+	for i, lineParams := range params.Lines {
+		if lineParams.AccountCode == "" {
 			return nil, fmt.Errorf("account_code is required for line %d", i)
 		}
 
-		line := bokio.JournalEntryLine{
-			AccountCode: accountCode,
+		// Parse account code to int32
+		accountCode, err := strconv.ParseInt(lineParams.AccountCode, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("invalid account_code for line %d: %v", i, err)
 		}
 
-		if lineDescription, ok := lineMap["description"].(string); ok {
-			line.Description = lineDescription
+		item := bokio.JournalEntryItem{
+			Account: int32(accountCode),
 		}
 
 		// Check for debit or credit (exactly one should be provided)
-		hasDebit := false
-		hasCredit := false
+		hasDebit := lineParams.Debit != nil
+		hasCredit := lineParams.Credit != nil
 
-		if debitRaw, ok := lineMap["debit"].(map[string]interface{}); ok {
-			hasDebit = true
-			amount, ok := debitRaw["amount"].(float64)
-			if !ok {
-				// Try parsing as int
-				if amtInt, ok := debitRaw["amount"].(int); ok {
-					amount = float64(amtInt)
-				} else {
-					return nil, fmt.Errorf("debit amount is required for line %d", i)
-				}
-			}
-
-			currency, ok := debitRaw["currency"].(string)
-			if !ok || currency == "" {
-				currency = "SEK"
-			}
-
-			line.Debit = &bokio.Money{
-				Amount:   amount,
-				Currency: currency,
-			}
+		if hasDebit {
+			item.Debit = lineParams.Debit.Amount
 		}
 
-		if creditRaw, ok := lineMap["credit"].(map[string]interface{}); ok {
-			hasCredit = true
-			amount, ok := creditRaw["amount"].(float64)
-			if !ok {
-				// Try parsing as int
-				if amtInt, ok := creditRaw["amount"].(int); ok {
-					amount = float64(amtInt)
-				} else {
-					return nil, fmt.Errorf("credit amount is required for line %d", i)
-				}
-			}
-
-			currency, ok := creditRaw["currency"].(string)
-			if !ok || currency == "" {
-				currency = "SEK"
-			}
-
-			line.Credit = &bokio.Money{
-				Amount:   amount,
-				Currency: currency,
-			}
+		if hasCredit {
+			item.Credit = lineParams.Credit.Amount
 		}
 
 		if !hasDebit && !hasCredit {
@@ -521,36 +531,31 @@ func parseCreateJournalEntryRequest(params map[string]interface{}) (*bokio.Creat
 			return nil, fmt.Errorf("cannot have both debit and credit for line %d", i)
 		}
 
-		lines[i] = line
+		items[i] = item
 	}
 
 	request := &bokio.CreateJournalEntryRequest{
-		Description: description,
-		Lines:       lines,
+		Title: params.Description,
+		Date:  params.Date,
+		Items: items,
 	}
 
 	// Parse date (in a real implementation, convert string to time.Time)
 	// For now, we'll leave Date as nil and let the API handle the string
 
-	if reference, ok := params["reference"].(string); ok {
-		request.Reference = reference
-	}
+	// Reference field doesn't exist in CreateJournalEntryRequest
 
 	return request, nil
 }
 
-// validateJournalEntryBalance validates that debits equal credits
-func validateJournalEntryBalance(request *bokio.CreateJournalEntryRequest) error {
+// validateJournalEntryBalanceFromTyped validates that debits equal credits for the typed version
+func validateJournalEntryBalanceFromTyped(request *bokio.CreateJournalEntryRequest) error {
 	totalDebits := make(map[string]float64)
 	totalCredits := make(map[string]float64)
 
-	for _, line := range request.Lines {
-		if line.Debit != nil {
-			totalDebits[line.Debit.Currency] += line.Debit.Amount
-		}
-		if line.Credit != nil {
-			totalCredits[line.Credit.Currency] += line.Credit.Amount
-		}
+	for _, item := range request.Items {
+		totalDebits["SEK"] += item.Debit
+		totalCredits["SEK"] += item.Credit
 	}
 
 	// Check that debits equal credits for each currency

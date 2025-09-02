@@ -181,18 +181,18 @@ test: ## Run all tests with coverage reporting
 	$(call print_status,"Running tests with coverage...")
 	@$(call print_status,"Checking for test files...")
 	@if [ -z "$$(find . -name '*_test.go' -not -path './vendor/*')" ]; then \
-		$(call print_warning,"No test files found"); \
+		printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "No test files found"; \
 	else \
-		$(call print_status,"Running tests with race detection..."); \
+		printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Running tests with race detection..."; \
 		if ! go test -v -race -coverprofile=coverage.out ./...; then \
-			$(call print_error,"Tests failed"); \
+			printf "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Tests failed"; \
 			exit 1; \
 		fi; \
-		$(call print_status,"Generating coverage report..."); \
+		printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Generating coverage report..."; \
 		go tool cover -html=coverage.out -o coverage.html; \
 		coverage=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}'); \
-		$(call print_success,"Tests passed with $$coverage coverage"); \
-		$(call print_status,"Coverage report: coverage.html"); \
+		printf "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Tests passed with $$coverage coverage"; \
+		printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Coverage report: coverage.html"; \
 	fi
 
 lint: ## Run golangci-lint for code quality analysis using go tool

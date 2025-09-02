@@ -117,6 +117,162 @@ BOKIO_READ_ONLY=false
 - `bokio_download_file` - Download uploaded file
 - `bokio_delete_upload` - Delete uploaded file
 
+## 🎮 MCP Usage Examples
+
+### Claude Desktop Configuration
+
+Add the Bokio MCP server to your Claude Desktop configuration file (`claude_desktop_config.json`):
+
+#### Using Nix (Recommended)
+```json
+{
+  "mcpServers": {
+    "bokio": {
+      "command": "nix",
+      "args": ["run", "github:klowdo/bokio-mcp", "--"],
+      "env": {
+        "BOKIO_CLIENT_ID": "your_client_id",
+        "BOKIO_CLIENT_SECRET": "your_client_secret",
+        "BOKIO_READ_ONLY": "false"
+      }
+    }
+  }
+}
+```
+
+#### Using Docker
+```json
+{
+  "mcpServers": {
+    "bokio": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "BOKIO_CLIENT_ID=your_client_id",
+        "-e", "BOKIO_CLIENT_SECRET=your_client_secret",
+        "-e", "BOKIO_READ_ONLY=false",
+        "ghcr.io/klowdo/bokio-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+#### Using Local Binary
+```json
+{
+  "mcpServers": {
+    "bokio": {
+      "command": "/path/to/bokio-mcp",
+      "env": {
+        "BOKIO_CLIENT_ID": "your_client_id",
+        "BOKIO_CLIENT_SECRET": "your_client_secret",
+        "BOKIO_READ_ONLY": "false"
+      }
+    }
+  }
+}
+```
+
+### Command Line Usage
+
+#### Running with Nix
+```bash
+# Run directly from GitHub
+nix run github:klowdo/bokio-mcp
+
+# Or if you've cloned the repository
+cd bokio-mcp
+nix run .
+```
+
+#### Running with Docker
+```bash
+# Pull and run the latest image
+docker run -it \
+  -e BOKIO_CLIENT_ID=your_client_id \
+  -e BOKIO_CLIENT_SECRET=your_client_secret \
+  -e BOKIO_READ_ONLY=false \
+  ghcr.io/klowdo/bokio-mcp:latest
+
+# Or with environment file
+docker run -it --env-file .env ghcr.io/klowdo/bokio-mcp:latest
+```
+
+#### Running from Source
+```bash
+# Build and run
+make build
+BOKIO_CLIENT_ID=your_id BOKIO_CLIENT_SECRET=your_secret ./bin/bokio-mcp
+
+# Or use the development target
+make dev
+```
+
+### Example Usage Scenarios
+
+Once configured with your MCP client (like Claude Desktop), you can interact with Bokio using natural language:
+
+#### Authentication Flow
+```
+"Please authenticate with Bokio and show me the connection status"
+```
+The assistant will use `bokio_authenticate` to start OAuth2 flow and `bokio_check_auth` to verify connection.
+
+#### Invoice Management
+```
+"Create an invoice for customer ID 123 with a line item for consulting services, 1000 SEK"
+```
+The assistant will use `bokio_create_invoice` with the appropriate parameters.
+
+```
+"Show me all unpaid invoices from this month"
+```
+The assistant will use `bokio_list_invoices` with filtering parameters.
+
+#### Customer Operations
+```
+"List all customers and show me details for any that have 'AB' in their name"
+```
+The assistant will use `bokio_list_customers` and `bokio_get_customer` as needed.
+
+#### Journal Entries
+```
+"Create a journal entry for office supplies purchase, 500 SEK"
+```
+The assistant will use `bokio_create_journal_entry` with proper accounting codes.
+
+#### File Management
+```
+"Upload this receipt file and attach it to invoice #12345"
+```
+The assistant will use `bokio_upload_file` and appropriate invoice update tools.
+
+### Read-Only Mode
+For safe exploration and analysis, enable read-only mode:
+
+```json
+{
+  "mcpServers": {
+    "bokio": {
+      "command": "nix",
+      "args": ["run", "github:klowdo/bokio-mcp", "--"],
+      "env": {
+        "BOKIO_CLIENT_ID": "your_client_id",
+        "BOKIO_CLIENT_SECRET": "your_client_secret",
+        "BOKIO_READ_ONLY": "true"
+      }
+    }
+  }
+}
+```
+
+In read-only mode, all write operations (`create_*`, `update_*`, `delete_*`) are disabled, but you can still:
+- List and view invoices, customers, and journal entries
+- Check authentication status
+- Download and view uploaded files
+- Generate reports and analysis
+
 ## 🛠️ Development
 
 ### Prerequisites

@@ -21,6 +21,9 @@
     let
       pkgs = nixpkgs.legacyPackages.${system};
 
+      # Schema files are now stored locally in the repository
+      # Use `make update-schema` to download the latest versions
+
       # Pre-commit hooks configuration
       pre-commit-check = pre-commit-hooks.lib.${system}.run {
         src = ./.;
@@ -97,14 +100,29 @@
 
         src = ./.;
 
-        # This will be updated after go.mod is created
-        vendorHash = null;
+        vendorHash = "sha256-5TdupBsoknikVrc4qShgDzZEuCaifHyG4PcC+WO7ng8=";
+
+        # Build with Go 1.24
+        nativeBuildInputs = [ pkgs.go_1_24 ];
+
+        # Set build flags
+        ldflags = [
+          "-s"
+          "-w"
+          "-X main.version=${self.packages.${system}.default.version or "nix-build"}"
+        ];
+
+        # Ensure we use the correct Go version
+        preBuild = ''
+          export GOROOT="${pkgs.go_1_24}/share/go"
+        '';
 
         meta = with pkgs.lib; {
-          description = "Model Context Protocol server for Bokio API integration";
+          description = "Bokio MCP Server - Model Context Protocol server for Bokio API integration";
           homepage = "https://github.com/klowdo/bokio-mcp";
           license = licenses.mit;
           maintainers = [ ];
+          platforms = platforms.unix;
         };
       };
 

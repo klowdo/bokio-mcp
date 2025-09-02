@@ -49,3 +49,6 @@ result-*
 # Temporary files
 tmp/
 temp/
+main
+coverage.html
+IMPLEMENTATION_PLAN.md

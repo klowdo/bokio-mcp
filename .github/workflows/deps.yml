@@ -27,7 +27,7 @@ jobs:
     name: Update Go Dependencies
     runs-on: ubuntu-latest
     if: github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'go-modules' || github.event_name == 'schedule'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -54,14 +54,14 @@ jobs:
       id: update
       run: |
         echo "Updating Go dependencies..."
-        
+
         # Update all dependencies to latest compatible versions
         go get -u ./...
         go mod tidy
-        
+
         # Check for security vulnerabilities
         govulncheck ./... || echo "Vulnerabilities detected, will be addressed in security updates"
-        
+
         # Check if there are changes
         if git diff --quiet go.mod go.sum; then
           echo "No dependency updates available"
@@ -69,7 +69,7 @@ jobs:
         else
           echo "Dependency updates detected"
           echo "changes_detected=true" >> $GITHUB_OUTPUT
-          
+
           # Show what changed
           echo "=== Dependency changes ==="
           echo "## go.mod changes:"
@@ -119,41 +119,41 @@ jobs:
       run: |
         cat > dependency_update_summary.md << 'EOF'
         ## 🔄 Go Dependency Updates
-        
+
         This PR contains automated updates to Go module dependencies.
-        
+
         ### Changes Made
-        
+
         - ✅ Updated Go dependencies to latest compatible versions
         - ✅ Regenerated Go types from schemas
         - ✅ Ran full test suite - all tests pass
         - ✅ Security scan completed - no vulnerabilities detected
-        
+
         ### Updated Dependencies
-        
+
         ```diff
         EOF
         git diff go.mod >> dependency_update_summary.md
         cat >> dependency_update_summary.md << 'EOF'
         ```
-        
+
         ### Validation Results
-        
+
         - ✅ All tests pass
         - ✅ Security scan clean
         - ✅ Code generation successful
         - ✅ No breaking changes detected
-        
+
         ### Auto-merge Criteria
-        
+
         This PR will be auto-merged if:
         - All CI checks pass
         - No major version updates are included
         - Security scan is clean
         - Tests pass in all environments
-        
+
         ---
-        
+
         *This PR was automatically created by the Dependency Updates workflow.*
         *Triggered by: ${{ github.event_name }}*
         *Workflow run: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
@@ -165,17 +165,17 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
+
         git add go.mod go.sum bokio/generated/
-        
+
         COMMIT_MSG="chore(deps): update Go dependencies
-        
+
         Automated update of Go module dependencies.
-        
+
         Updated at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
         Workflow: ${{ github.workflow }}
         Run ID: ${{ github.run_id }}"
-        
+
         git commit -m "$COMMIT_MSG"
         echo "commit_created=true" >> $GITHUB_OUTPUT
 
@@ -229,7 +229,7 @@ jobs:
     name: Security Updates
     runs-on: ubuntu-latest
     if: github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'security-only' || github.event_name == 'schedule'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -285,29 +285,29 @@ jobs:
           const title = '🚨 Security vulnerabilities detected in dependencies';
           const body = `
           ## Security Scan Results
-          
+
           Automated security scan detected potential vulnerabilities in the project dependencies.
-          
+
           ### Vulnerability Check Results
           - Status: ${{ steps.vuln_check.outputs.vulnerabilities_found == 'true' && 'Issues found' || 'Clean' }}
-          
-          ### Security Audit Results  
+
+          ### Security Audit Results
           - Status: ${{ steps.security_audit.outputs.security_issues_found == 'true' && 'Issues found' || 'Clean' }}
-          
+
           ### Next Steps
-          
+
           1. Review the security scan results in the workflow run
           2. Update vulnerable dependencies
           3. Apply security patches as needed
           4. Re-run security scan to verify fixes
-          
+
           ### Workflow Run
           [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          
+
           ---
           *This issue was automatically created by the security scan workflow.*
           `;
-          
+
           github.rest.issues.create({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -321,14 +321,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [update-go-dependencies, security-updates]
     if: always()
-    
+
     steps:
     - name: Summary
       run: |
         echo "## Dependency Update Summary"
         echo "- Go Dependencies: ${{ needs.update-go-dependencies.result }}"
         echo "- Security Updates: ${{ needs.security-updates.result }}"
-        
+
         if [ "${{ needs.update-go-dependencies.result }}" = "success" ] && [ "${{ needs.security-updates.result }}" = "success" ]; then
           echo "✅ All dependency updates completed successfully"
         else

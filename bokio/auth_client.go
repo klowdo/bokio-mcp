@@ -16,12 +16,14 @@ type AuthClient struct {
 	GeneralClient *general.Client
 	token         string
 	baseURL       string
+	readOnly      bool
 }
 
 // Config holds the simple configuration for the auth client
 type Config struct {
 	IntegrationToken string
 	BaseURL          string
+	ReadOnly         bool
 }
 
 // NewAuthClient creates a new authenticated client using generated clients
@@ -53,6 +55,7 @@ func NewAuthClient(config *Config) (*AuthClient, error) {
 		GeneralClient: generalClient,
 		token:         config.IntegrationToken,
 		baseURL:       config.BaseURL,
+		readOnly:      config.ReadOnly,
 	}, nil
 }
 
@@ -61,6 +64,7 @@ func LoadConfigFromEnv() *Config {
 	return &Config{
 		IntegrationToken: os.Getenv("BOKIO_INTEGRATION_TOKEN"),
 		BaseURL:          getEnvWithDefault("BOKIO_BASE_URL", "https://api.bokio.se"),
+		ReadOnly:         os.Getenv("BOKIO_READ_ONLY") == "true",
 	}
 }
 
@@ -91,6 +95,20 @@ func (ac *AuthClient) GetBaseURL() string {
 // IsAuthenticated returns true if the client has an authentication token
 func (ac *AuthClient) IsAuthenticated() bool {
 	return ac.token != ""
+}
+
+// GetConfig returns the current configuration including read-only mode
+func (ac *AuthClient) GetConfig() *Config {
+	return &Config{
+		IntegrationToken: ac.token,
+		BaseURL:          ac.baseURL,
+		ReadOnly:         ac.readOnly,
+	}
+}
+
+// IsReadOnly returns true if the client is in read-only mode
+func (ac *AuthClient) IsReadOnly() bool {
+	return ac.readOnly
 }
 
 // getEnvWithDefault returns the value of an environment variable or a default value

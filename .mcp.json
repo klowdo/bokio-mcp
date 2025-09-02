@@ -1,0 +1,17 @@
+
+{
+  "mcpServers": {
+    "bokio": {
+      "command": "nix",
+      "args": ["run", ".", "--"],
+      "env": {
+        "BOKIO_READ_ONLY": "true"
+      }
+    },
+
+    "nix": {
+      "command": "nix",
+      "args": ["run", "github:utensils/mcp-nixos", "--"]
+    }
+  }
+}

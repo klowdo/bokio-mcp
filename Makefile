@@ -64,19 +64,19 @@ COLOR_RED := \033[31m
 
 # Helper function to print status messages
 define print_status
-	echo "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
+	@printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 define print_success
-	echo "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
+	@printf "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 define print_warning
-	echo "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
+	@printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 define print_error
-	echo "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)$(1)$(COLOR_RESET)"
+	@printf "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 # Check if command exists
@@ -123,113 +123,40 @@ update-schema: ## Download latest OpenAPI specs from Bokio GitHub
 	fi
 	$(call print_success,"API specifications downloaded to $(SCHEMAS_DIR)/")
 
-generate-types: update-schema ## Generate Go types from OpenAPI specifications using go tool
+generate-types: ## Generate Go types from OpenAPI specifications using go generate
 	$(call print_status,"Generating Go types from OpenAPI specs...")
 	@mkdir -p $(GENERATED_DIR)/company $(GENERATED_DIR)/general
-	@$(call print_status,"Generating types for company API...")
-	@if ! go tool oapi-codegen -package company -generate types "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company/types.go"; then \
-		$(call print_error,"Failed to generate company types"); \
+	@$(call print_status,"Running go generate...")
+	@if ! go generate ./$(GENERATED_DIR)/...; then \
+		$(call print_error,"Failed to generate types"); \
 		exit 1; \
 	fi
-	@$(call print_status,"Generating types for general API...")
-	@if ! go tool oapi-codegen -package general -generate types "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general/types.go"; then \
-		$(call print_error,"Failed to generate general types"); \
-		exit 1; \
-	fi
-	@$(call print_status,"Generating client for company API...")
-	@if go tool oapi-codegen -package company -generate "client,skip-fmt" "$(SCHEMAS_DIR)/company-api.yaml" > "$(GENERATED_DIR)/company/client_raw.go" 2>/dev/null; then \
-		sed -e 's/\*\[\]200_Items_Item/\*\[\]interface{}/g' \
-		    -e 's/\*200_Items_Item/\*interface{}/g' \
-		    -e 's/200_Items_Item/interface{}/g' \
-		    -e 's/\*\[\]201_Items_Item/\*\[\]interface{}/g' \
-		    -e 's/\*201_Items_Item/\*interface{}/g' \
-		    -e 's/201_Items_Item/interface{}/g' \
-		    -e '/^[[:space:]]*"bytes"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"compress\/gzip"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"encoding\/base64"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"encoding\/xml"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"errors"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"os"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"path"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"time"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*yaml[[:space:]]*"gopkg.in\/yaml.v2"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/getkin\/kin-openapi\/openapi3"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/gin-gonic\/gin"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/gofiber\/fiber\/v2"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12\/core\/router"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/gorilla\/mux"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/go-chi\/chi\/v5"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/labstack\/echo\/v4"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictecho[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/echo"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictgin[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/gin"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictiris[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/iris"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictnethttp[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/nethttp"[[:space:]]*$$/d' \
-		    "$(GENERATED_DIR)/company/client_raw.go" > "$(GENERATED_DIR)/company/client.go" && \
-		rm "$(GENERATED_DIR)/company/client_raw.go"; \
-	else \
-		$(call print_error,"Failed to generate company client"); \
-		echo "// Client generation failed" > "$(GENERATED_DIR)/company/client.go"; \
-	fi
-	@$(call print_status,"Generating client for general API...")
-	@if go tool oapi-codegen -package general -generate "client,skip-fmt" "$(SCHEMAS_DIR)/general-api.yaml" > "$(GENERATED_DIR)/general/client_raw.go" 2>/dev/null; then \
-		sed -e 's/\*\[\]200_Items_Item/\*\[\]interface{}/g' \
-		    -e 's/\*200_Items_Item/\*interface{}/g' \
-		    -e 's/200_Items_Item/interface{}/g' \
-		    -e '/^[[:space:]]*"bytes"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"compress\/gzip"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"encoding\/base64"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"encoding\/xml"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"errors"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"os"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"path"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"time"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*yaml[[:space:]]*"gopkg.in\/yaml.v2"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/getkin\/kin-openapi\/openapi3"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/gin-gonic\/gin"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/gofiber\/fiber\/v2"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/kataras\/iris\/v12\/core\/router"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/gorilla\/mux"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/go-chi\/chi\/v5"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*"github.com\/labstack\/echo\/v4"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictecho[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/echo"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictgin[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/gin"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictiris[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/iris"[[:space:]]*$$/d' \
-		    -e '/^[[:space:]]*strictnethttp[[:space:]]*"github.com\/oapi-codegen\/runtime\/strictmiddleware\/nethttp"[[:space:]]*$$/d' \
-		    "$(GENERATED_DIR)/general/client_raw.go" > "$(GENERATED_DIR)/general/client.go" && \
-		rm "$(GENERATED_DIR)/general/client_raw.go"; \
-	else \
-		$(call print_error,"Failed to generate general client"); \
-		echo "// Client generation failed" > "$(GENERATED_DIR)/general/client.go"; \
-	fi
-	@$(call print_status,"Adding build tags and cleaning up generated files...")
-	@for file in $(GENERATED_DIR)/company/*.go $(GENERATED_DIR)/general/*.go; do \
-		if [ -f "$$file" ]; then \
-			echo "//go:build !ignore" | cat - "$$file" > temp && mv temp "$$file"; \
-			gofmt -w "$$file" 2>/dev/null || true; \
-			go tool goimports -w "$$file" 2>/dev/null || true; \
-		fi \
-	done
-	@$(call print_status,"Creating backward-compatible aliases...")
-	@echo "//go:build !ignore" > "$(GENERATED_DIR)/company_types.go"
-	@echo "// Backward-compatible alias - use bokio/generated/company package instead" >> "$(GENERATED_DIR)/company_types.go"
-	@echo "package generated" >> "$(GENERATED_DIR)/company_types.go"
-	@echo "" >> "$(GENERATED_DIR)/company_types.go"
-	@echo "import \"github.com/klowdo/bokio-mcp/bokio/generated/company\"" >> "$(GENERATED_DIR)/company_types.go"
-	@echo "//go:build !ignore" > "$(GENERATED_DIR)/company_client.go"
-	@echo "// Backward-compatible alias - use bokio/generated/company package instead" >> "$(GENERATED_DIR)/company_client.go"
-	@echo "package generated" >> "$(GENERATED_DIR)/company_client.go"
-	@echo "" >> "$(GENERATED_DIR)/company_client.go"
-	@echo "import \"github.com/klowdo/bokio-mcp/bokio/generated/company\"" >> "$(GENERATED_DIR)/company_client.go"
 	$(call print_success,"Generated types and clients in $(GENERATED_DIR)/")
 
 # =============================================================================
 # Build Targets
 # =============================================================================
 
-build: generate-types ## Build the MCP server binary
+build: ## Build the MCP server binary (run go generate first if needed)
 	$(call print_status,"Building $(BINARY_NAME) $(VERSION)...")
+	@mkdir -p $(BIN_DIR)
+	@$(call print_status,"Checking Go module dependencies...")
+	@go mod verify
+	@$(call print_status,"Compiling binary...")
+	@if ! go build $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME) .; then \
+		$(call print_error,"Build failed"); \
+		exit 1; \
+	fi
+	@$(call print_status,"Verifying binary...")
+	@if [ ! -x "$(BIN_DIR)/$(BINARY_NAME)" ]; then \
+		$(call print_error,"Binary is not executable"); \
+		exit 1; \
+	fi
+	@file_size=$$(du -h $(BIN_DIR)/$(BINARY_NAME) | cut -f1); \
+	$(call print_success,"Built $(BINARY_NAME) ($$file_size) in $(BIN_DIR)/")
+
+build-only: ## Build the MCP server binary without generating types (for Nix)
+	$(call print_status,"Building $(BINARY_NAME) $(VERSION) (build-only mode)...")
 	@mkdir -p $(BIN_DIR)
 	@$(call print_status,"Checking Go module dependencies...")
 	@go mod verify
@@ -272,7 +199,7 @@ lint: ## Run golangci-lint for code quality analysis using go tool
 	$(call print_status,"Running code quality checks...")
 	@$(call print_status,"Checking golangci-lint configuration...")
 	@if [ ! -f ".golangci.yml" ] && [ ! -f ".golangci.yaml" ]; then \
-		$(call print_warning,"No golangci-lint config found, using defaults"); \
+		printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "No golangci-lint config found, using defaults"; \
 	fi
 	@if ! go tool golangci-lint run ./...; then \
 		$(call print_error,"Linting failed"); \
@@ -284,7 +211,7 @@ lint: ## Run golangci-lint for code quality analysis using go tool
 # Development
 # =============================================================================
 
-dev: generate-types ## Run server in development mode with enhanced output
+dev: ## Run server in development mode with enhanced output
 	$(call print_status,"Starting development server...")
 	@$(call print_status,"Development mode with hot reload enabled")
 	@$(call print_warning,"Press Ctrl+C to stop the server")
@@ -344,7 +271,7 @@ security: ## Run comprehensive security scans using go tool
 		exit 1; \
 	fi
 	@$(call print_status,"Running static security analysis...")
-	@if ! go tool gosec -quiet ./...; then \
+	@if ! go tool gosec -quiet -exclude-dir=bokio/generated ./...; then \
 		$(call print_error,"Security analysis found issues"); \
 		exit 1; \
 	fi
@@ -559,7 +486,7 @@ format: ## Format all Go code using gofmt and goimports
 	@if command -v goimports >/dev/null 2>&1; then \
 		find . -name '*.go' -not -path './vendor/*' -not -path './$(GENERATED_DIR)/*' | xargs goimports -w; \
 	else \
-		$(call print_warning,"goimports not found, install with: go install golang.org/x/tools/cmd/goimports@latest"); \
+		printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "goimports not found, install with: go install golang.org/x/tools/cmd/goimports@latest"; \
 	fi
 	$(call print_success,"Code formatting completed")
 

@@ -9,7 +9,7 @@ The Bokio MCP Server is a Go-based Model Context Protocol server that provides A
 ### Key Technologies
 - **Go 1.24** with tool directives (uses `go tool` commands, NOT `go run`)
 - **Model Context Protocol (MCP)** for AI assistant integration
-- **OAuth2** authentication with token management  
+- **OAuth2** authentication with token management
 - **OpenAPI code generation** using oapi-codegen
 - **Nix flake** for reproducible development environment
 - **direnv** for automatic environment loading
@@ -201,7 +201,7 @@ git commit -m "feat: adapt to new API endpoints in schema update"
 
 ### Generated Files (Never Edit Manually)
 - `bokio/generated/company_types.go`
-- `bokio/generated/general_types.go` 
+- `bokio/generated/general_types.go`
 - `bokio/generated/company_client.go`
 - `bokio/generated/general_client.go`
 
@@ -287,13 +287,13 @@ func RegisterNewTools(server *mcp.Server, client *bokio.Client) error {
             // Implementation here
         },
         mcp.Input(
-            mcp.Property("field", 
+            mcp.Property("field",
                 mcp.Description("Field description"),
                 mcp.Required(true),
             ),
         ),
     )
-    
+
     server.AddTools(tool)
     return nil
 }
@@ -357,7 +357,7 @@ make release
 - **Solution**: Ensure Go 1.24 and use `nix develop` environment
 
 #### Generated files out of sync
-- **Cause**: Schema updated but types not regenerated  
+- **Cause**: Schema updated but types not regenerated
 - **Solution**: `make clean && make generate-types`
 
 #### OAuth authentication fails
@@ -391,7 +391,7 @@ The project includes 25+ Make targets for automation:
 - `make update-schema` - Download latest Bokio API specs
 - `make generate-types` - Generate Go types from OpenAPI
 - `make build` - Build the MCP server binary
-- `make dev` - Run development server  
+- `make dev` - Run development server
 - `make test` - Run tests with coverage
 - `make lint` - Code quality analysis
 - `make security` - Security scanning

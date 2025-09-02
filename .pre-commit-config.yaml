@@ -70,6 +70,7 @@ repos:
       - id: check-case-conflict
       - id: check-added-large-files
         args: ['--maxkb=500']
+        exclude: '^bin/'
 
       # Go specific checks (complementary to our make targets)
       - id: check-executables-have-shebangs

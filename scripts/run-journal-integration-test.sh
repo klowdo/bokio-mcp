@@ -94,7 +94,7 @@ else
         print_error "Go is not installed. Please install Go 1.24+ or use Nix."
         exit 1
     fi
-    
+
     GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
     if [[ "$GO_VERSION" < "1.24" ]]; then
         print_warning "Go version $GO_VERSION detected. Go 1.24+ recommended."
@@ -196,7 +196,7 @@ echo
 if $RUN_CMD "go test -v -run \"$TEST_PATTERN\""; then
     echo
     print_success "Tests completed successfully!"
-    
+
     # Show next steps if authentication is needed
     if [[ "$choice" == "1" ]] && [[ -z "${TEST_AUTH_CODE:-}" ]]; then
         echo

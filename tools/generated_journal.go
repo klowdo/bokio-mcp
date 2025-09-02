@@ -31,8 +31,8 @@ type GeneratedJournalResult struct {
 func RegisterGeneratedJournalTools(server *mcp.Server, client *bokio.AuthClient) error {
 	// Tool to list journal entries using generated client
 	listJournalTool := mcp.NewServerTool[GeneratedJournalParams, GeneratedJournalResult](
-		"bokio_journal_entries_pure_generated",
-		"List journal entries using ONLY the generated API client (pure implementation)",
+		"bokio_journal_entries_list",
+		"List journal entries for a company with optional pagination",
 		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GeneratedJournalParams]) (*mcp.CallToolResultFor[GeneratedJournalResult], error) {
 			// Get company ID from params or environment
 			companyIDStr := params.Arguments.CompanyID
@@ -108,7 +108,7 @@ func RegisterGeneratedJournalTools(server *mcp.Server, client *bokio.AuthClient)
 			return &mcp.CallToolResultFor[GeneratedJournalResult]{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ SUCCESS: Retrieved journal entries using ONLY generated client!\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+						Text: fmt.Sprintf("✅ Successfully retrieved journal entries\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
 					},
 				},
 			}, nil

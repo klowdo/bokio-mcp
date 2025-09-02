@@ -154,7 +154,7 @@ The integration test covers eight comprehensive test scenarios:
 # Test only client configuration
 go test -v -run TestJournalIntegrationSuite/Test_01_ClientConfiguration
 
-# Test only authentication flow  
+# Test only authentication flow
 go test -v -run TestJournalIntegrationSuite/Test_02_AuthenticationFlow
 
 # Test only journal listing functionality

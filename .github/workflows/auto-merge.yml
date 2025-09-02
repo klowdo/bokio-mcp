@@ -19,7 +19,7 @@ jobs:
     name: Auto-merge PRs
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]' || contains(github.head_ref, 'automated/')
-    
+
     steps:
     - name: Get PR information
       id: pr_info
@@ -31,7 +31,7 @@ jobs:
             repo: context.repo.repo,
             pull_number: context.issue.number
           });
-          
+
           return {
             author: pr.user.login,
             title: pr.title,
@@ -53,7 +53,7 @@ jobs:
         MERGEABLE=$(echo "$PR_INFO" | jq -r '.mergeable')
         HEAD_REF=$(echo "$PR_INFO" | jq -r '.head')
         BASE_REF=$(echo "$PR_INFO" | jq -r '.base')
-        
+
         echo "Author: $AUTHOR"
         echo "Title: $TITLE"
         echo "Labels: $LABELS"
@@ -61,10 +61,10 @@ jobs:
         echo "Mergeable: $MERGEABLE"
         echo "Head ref: $HEAD_REF"
         echo "Base ref: $BASE_REF"
-        
+
         # Check if PR is eligible for auto-merge
         ELIGIBLE=false
-        
+
         # Dependabot PRs
         if [[ "$AUTHOR" == "dependabot[bot]" ]]; then
           # Check if it's a minor/patch update
@@ -78,7 +78,7 @@ jobs:
             fi
           fi
         fi
-        
+
         # Automated workflow PRs
         if [[ "$HEAD_REF" =~ ^automated/ ]]; then
           if [[ "$LABELS" =~ "automated" ]] && [[ "$LABELS" =~ "schema-update|dependencies" ]]; then
@@ -86,23 +86,23 @@ jobs:
             echo "✅ Automated workflow PR eligible for auto-merge"
           fi
         fi
-        
+
         # Check other conditions
         if [[ "$DRAFT" == "true" ]]; then
           ELIGIBLE=false
           echo "❌ PR is draft, not eligible for auto-merge"
         fi
-        
+
         if [[ "$MERGEABLE" != "true" ]] && [[ "$MERGEABLE" != "null" ]]; then
           ELIGIBLE=false
           echo "❌ PR has merge conflicts, not eligible for auto-merge"
         fi
-        
+
         if [[ "$BASE_REF" != "main" ]]; then
           ELIGIBLE=false
           echo "❌ PR not targeting main branch, not eligible for auto-merge"
         fi
-        
+
         echo "eligible=$ELIGIBLE" >> $GITHUB_OUTPUT
 
     - name: Wait for checks to complete
@@ -115,13 +115,13 @@ jobs:
             repo: context.repo.repo,
             ref: context.payload.pull_request.head.sha
           });
-          
+
           const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
             owner: context.repo.owner,
             repo: context.repo.repo,
             ref: context.payload.pull_request.head.sha
           });
-          
+
           // Check if all required checks are completed and successful
           const requiredChecks = ['test', 'lint', 'security'];
           const allChecks = [...checks.check_runs, ...statuses.map(s => ({
@@ -129,33 +129,33 @@ jobs:
             status: s.state === 'success' ? 'completed' : s.state,
             conclusion: s.state
           }))];
-          
+
           console.log('All checks:', allChecks.map(c => `${c.name}: ${c.status}/${c.conclusion}`));
-          
-          const pendingChecks = allChecks.filter(check => 
-            check.status === 'in_progress' || 
+
+          const pendingChecks = allChecks.filter(check =>
+            check.status === 'in_progress' ||
             check.status === 'queued' ||
             check.status === 'pending'
           );
-          
+
           if (pendingChecks.length > 0) {
             console.log('Waiting for checks to complete:', pendingChecks.map(c => c.name));
             // Wait a bit and try again
             setTimeout(() => process.exit(1), 30000); // Wait 30 seconds then fail (will retry)
             return;
           }
-          
-          const failedChecks = allChecks.filter(check => 
-            check.conclusion === 'failure' || 
+
+          const failedChecks = allChecks.filter(check =>
+            check.conclusion === 'failure' ||
             check.conclusion === 'error' ||
             check.conclusion === 'cancelled'
           );
-          
+
           if (failedChecks.length > 0) {
             console.log('❌ Some checks failed:', failedChecks.map(c => c.name));
             process.exit(1);
           }
-          
+
           console.log('✅ All checks passed');
 
     - name: Auto-approve PR
@@ -184,7 +184,7 @@ jobs:
               merge_method: 'squash'
             }
           });
-          
+
           console.log('✅ Auto-merge enabled for PR');
 
     - name: Add comment
@@ -203,7 +203,7 @@ jobs:
     name: Cleanup merged PRs
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
-    
+
     steps:
     - name: Delete branch
       if: startsWith(github.head_ref, 'automated/') || startsWith(github.head_ref, 'dependabot/')

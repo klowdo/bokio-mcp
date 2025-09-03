@@ -35,14 +35,14 @@
           # Go formatting
           gofmt.enable = true;
 
-          # YAML/JSON formatting (excluding downloaded schemas)
-          prettier = {
-            enable = true;
-            excludes = [ "schemas/.*\\.ya?ml" ];
-            settings = {
-              tab-width = 2;
-            };
-          };
+          # YAML/JSON formatting (excluding downloaded schemas) - temporarily disabled
+          # prettier = {
+          #   enable = true;
+          #   excludes = [ "schemas/.*\\.ya?ml" ];
+          #   settings = {
+          #     tab-width = 2;
+          #   };
+          # };
         };
       };
 

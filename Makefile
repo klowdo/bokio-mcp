@@ -64,19 +64,19 @@ COLOR_RED := \033[31m
 
 # Helper function to print status messages
 define print_status
-	@printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
+	printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 define print_success
-	@printf "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
+	printf "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 define print_warning
-	@printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
+	printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 define print_error
-	@printf "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
+	printf "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" $(1)
 endef
 
 # Check if command exists
@@ -91,9 +91,21 @@ endef
 # Tool Installation
 # =============================================================================
 
-install-tools: ## Download Go tools (not needed - using go run instead)
-	$(call print_warning,"This target is deprecated. Tools are now run directly with 'go run'")
-	$(call print_success,"No installation needed - tools run directly with go run")
+install-tools: ## Install Go tools using Go 1.24 tool directives
+	$(call print_status,"Installing Go tools from tool directives...")
+	@if ! go version | grep -q "go1\.24"; then \
+		$(call print_error,"Go 1.24 required for tool directives. Current: $$(go version)"); \
+		exit 1; \
+	fi
+	@$(call print_status,"Installing oapi-codegen...")
+	@go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+	@$(call print_status,"Installing golangci-lint...")
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@$(call print_status,"Installing gosec...")
+	@go install github.com/securego/gosec/v2/cmd/gosec@latest
+	@$(call print_status,"Installing govulncheck...")
+	@go install golang.org/x/vuln/cmd/govulncheck@latest
+	@$(call print_success,"All tools installed successfully")
 
 # =============================================================================
 # Schema Management
@@ -181,25 +193,25 @@ test: ## Run all tests with coverage reporting
 	$(call print_status,"Running tests with coverage...")
 	@$(call print_status,"Checking for test files...")
 	@if [ -z "$$(find . -name '*_test.go' -not -path './vendor/*')" ]; then \
-		printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "No test files found"; \
+		$(call print_warning,"No test files found"); \
 	else \
-		printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Running tests with race detection..."; \
+		$(call print_status,"Running tests with race detection..."); \
 		if ! go test -v -race -coverprofile=coverage.out ./...; then \
-			printf "$(COLOR_BOLD)$(COLOR_RED)✗$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Tests failed"; \
+			$(call print_error,"Tests failed"); \
 			exit 1; \
 		fi; \
-		printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Generating coverage report..."; \
+		$(call print_status,"Generating coverage report..."); \
 		go tool cover -html=coverage.out -o coverage.html; \
 		coverage=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}'); \
-		printf "$(COLOR_BOLD)$(COLOR_GREEN)✓$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Tests passed with $$coverage coverage"; \
-		printf "$(COLOR_BOLD)$(COLOR_BLUE)▶$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "Coverage report: coverage.html"; \
+		$(call print_success,"Tests passed with $$coverage coverage"); \
+		$(call print_status,"Coverage report: coverage.html"); \
 	fi
 
 lint: ## Run golangci-lint for code quality analysis using go tool
 	$(call print_status,"Running code quality checks...")
 	@$(call print_status,"Checking golangci-lint configuration...")
 	@if [ ! -f ".golangci.yml" ] && [ ! -f ".golangci.yaml" ]; then \
-		printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "No golangci-lint config found, using defaults"; \
+		$(call print_warning,"No golangci-lint config found - using defaults"); \
 	fi
 	@if ! go tool golangci-lint run ./...; then \
 		$(call print_error,"Linting failed"); \
@@ -486,7 +498,7 @@ format: ## Format all Go code using gofmt and goimports
 	@if command -v goimports >/dev/null 2>&1; then \
 		find . -name '*.go' -not -path './vendor/*' -not -path './$(GENERATED_DIR)/*' | xargs goimports -w; \
 	else \
-		printf "$(COLOR_BOLD)$(COLOR_YELLOW)⚠$(COLOR_RESET) $(COLOR_BOLD)%s$(COLOR_RESET)\n" "goimports not found, install with: go install golang.org/x/tools/cmd/goimports@latest"; \
+		$(call print_warning,"goimports not found, install with: go install golang.org/x/tools/cmd/goimports@latest"); \
 	fi
 	$(call print_success,"Code formatting completed")
 

@@ -37,23 +37,24 @@ go test -v -run TestJournalIntegrationSuite
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BOKIO_CLIENT_ID` | Yes | - | OAuth2 client ID from Bokio |
-| `BOKIO_CLIENT_SECRET` | Yes | - | OAuth2 client secret from Bokio |
-| `BOKIO_BASE_URL` | No | `https://api.bokio.se` | Bokio API base URL |
-| `BOKIO_REDIRECT_URL` | No | `http://localhost:8080/callback` | OAuth2 redirect URI |
-| `BOKIO_READ_ONLY` | No | `false` | Enable read-only mode |
-| `SKIP_AUTH_TESTS` | No | `false` | Skip tests requiring authentication |
-| `TEST_AUTH_CODE` | No | - | Authorization code from OAuth2 flow |
-| `TEST_ACCOUNT_ID` | No | `1930` | Account ID for filtering tests |
-| `TEST_FROM_DATE` | No | `2024-01-01` | Start date for filtering tests |
-| `TEST_TO_DATE` | No | `2024-12-31` | End date for filtering tests |
-| `EXPECTED_MIN_JOURNAL_ENTRIES` | No | `0` | Minimum expected journal entries |
+| Variable                       | Required | Default                          | Description                         |
+| ------------------------------ | -------- | -------------------------------- | ----------------------------------- |
+| `BOKIO_CLIENT_ID`              | Yes      | -                                | OAuth2 client ID from Bokio         |
+| `BOKIO_CLIENT_SECRET`          | Yes      | -                                | OAuth2 client secret from Bokio     |
+| `BOKIO_BASE_URL`               | No       | `https://api.bokio.se`           | Bokio API base URL                  |
+| `BOKIO_REDIRECT_URL`           | No       | `http://localhost:8080/callback` | OAuth2 redirect URI                 |
+| `BOKIO_READ_ONLY`              | No       | `false`                          | Enable read-only mode               |
+| `SKIP_AUTH_TESTS`              | No       | `false`                          | Skip tests requiring authentication |
+| `TEST_AUTH_CODE`               | No       | -                                | Authorization code from OAuth2 flow |
+| `TEST_ACCOUNT_ID`              | No       | `1930`                           | Account ID for filtering tests      |
+| `TEST_FROM_DATE`               | No       | `2024-01-01`                     | Start date for filtering tests      |
+| `TEST_TO_DATE`                 | No       | `2024-12-31`                     | End date for filtering tests        |
+| `EXPECTED_MIN_JOURNAL_ENTRIES` | No       | `0`                              | Minimum expected journal entries    |
 
 ### Example Configurations
 
 #### Basic Usage
+
 ```bash
 export BOKIO_CLIENT_ID="your_client_id"
 export BOKIO_CLIENT_SECRET="your_client_secret"
@@ -61,12 +62,14 @@ go test -v -run TestJournalIntegrationSuite
 ```
 
 #### Read-Only Mode Testing
+
 ```bash
 export BOKIO_READ_ONLY=true
 go test -v -run TestJournalIntegrationSuite
 ```
 
 #### Skip Authentication (Client Setup Only)
+
 ```bash
 export SKIP_AUTH_TESTS=true
 go test -v -run TestJournalIntegrationSuite/Test_01_ClientConfiguration
@@ -77,7 +80,9 @@ go test -v -run TestJournalIntegrationSuite/Test_01_ClientConfiguration
 The integration test demonstrates the complete OAuth2 flow:
 
 ### 1. Automatic Authorization URL Generation
+
 The test generates an authorization URL and displays it in the output:
+
 ```
 📋 MANUAL AUTHENTICATION REQUIRED:
    1. Open the following URL in your browser:
@@ -89,6 +94,7 @@ The test generates an authorization URL and displays it in the output:
 ```
 
 ### 2. Manual Authorization Step
+
 1. Copy the displayed URL
 2. Open it in your browser
 3. Login to Bokio and authorize the application
@@ -96,6 +102,7 @@ The test generates an authorization URL and displays it in the output:
 5. Copy the `code` parameter from the redirect URL
 
 ### 3. Complete Token Exchange
+
 ```bash
 export TEST_AUTH_CODE="authorization_code_from_step_2"
 go test -v -run TestJournalIntegrationSuite/Test_02_AuthenticationFlow
@@ -106,43 +113,51 @@ go test -v -run TestJournalIntegrationSuite/Test_02_AuthenticationFlow
 The integration test covers eight comprehensive test scenarios:
 
 ### Test_01_ClientConfiguration
+
 - ✅ Client initialization and setup
 - ✅ Read-only mode configuration
 - ✅ Initial authentication state
 
 ### Test_02_AuthenticationFlow
+
 - ✅ Authorization URL generation
 - ✅ OAuth2 token exchange
 - ✅ Authentication state validation
 - ✅ Tenant information retrieval
 
 ### Test_03_ListJournalEntries
+
 - ✅ Basic journal entry listing
 - ✅ Pagination support
 - ✅ Date range filtering
 - ✅ Account code filtering
 
 ### Test_04_GetSpecificJournalEntry
+
 - ✅ Individual journal entry retrieval
 - ✅ Entry detail validation
 - ✅ Journal entry balance verification
 
 ### Test_05_GetAccountsChart
+
 - ✅ Chart of accounts retrieval
 - ✅ Account information validation
 - ✅ Test account verification
 
 ### Test_06_ReadOnlyModeValidation
+
 - ✅ Write operation blocking
 - ✅ Read operation allowance
 - ✅ Error message validation
 
 ### Test_07_ErrorHandling
+
 - ✅ Non-existent entry handling
 - ✅ Invalid date format handling
 - ✅ Invalid account code handling
 
 ### Test_08_RateLimitingAndRetries
+
 - ✅ Sequential request handling
 - ✅ Rate limiting validation
 - ✅ Performance measurement
@@ -150,6 +165,7 @@ The integration test covers eight comprehensive test scenarios:
 ## 🎯 Running Specific Tests
 
 ### Run Individual Test Cases
+
 ```bash
 # Test only client configuration
 go test -v -run TestJournalIntegrationSuite/Test_01_ClientConfiguration
@@ -162,6 +178,7 @@ go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
 ```
 
 ### Run Tests with Custom Date Range
+
 ```bash
 export TEST_FROM_DATE="2024-06-01"
 export TEST_TO_DATE="2024-06-30"
@@ -169,6 +186,7 @@ go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
 ```
 
 ### Run Tests with Specific Account
+
 ```bash
 export TEST_ACCOUNT_ID="1510"  # Swedish chart of accounts: "Customer receivables"
 go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
@@ -177,6 +195,7 @@ go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
 ## 🔍 Test Output Examples
 
 ### Successful Authentication
+
 ```
 === RUN   TestJournalIntegrationSuite/Test_02_AuthenticationFlow
 === Testing OAuth2 Authentication Flow ===
@@ -186,6 +205,7 @@ go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
 ```
 
 ### Journal Entry Listing
+
 ```
 === RUN   TestJournalIntegrationSuite/Test_03_ListJournalEntries
 === Testing Journal Entry Listing ===
@@ -198,6 +218,7 @@ go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
 ```
 
 ### Read-Only Mode Validation
+
 ```
 === RUN   TestJournalIntegrationSuite/Test_06_ReadOnlyModeValidation
 === Testing Read-Only Mode Validation ===
@@ -210,31 +231,41 @@ go test -v -run TestJournalIntegrationSuite/Test_03_ListJournalEntries
 ### Common Issues and Solutions
 
 #### 1. Authentication Failures
+
 ```
 Error: Failed to exchange code for token: invalid_grant
 ```
+
 **Solution:** The authorization code has expired or been used. Generate a new one.
 
 #### 2. Missing Credentials
+
 ```
 Skipping integration tests: BOKIO_CLIENT_ID and BOKIO_CLIENT_SECRET must be set
 ```
+
 **Solution:** Set the required environment variables or use `SKIP_AUTH_TESTS=true` for client-only tests.
 
 #### 3. Network Connectivity
+
 ```
 Error: Failed to list journal entries: dial tcp: no such host
 ```
+
 **Solution:** Check internet connection and verify `BOKIO_BASE_URL` is correct.
 
 #### 4. Rate Limiting
+
 ```
 Error: 429 Too Many Requests
 ```
+
 **Solution:** The test includes built-in rate limiting. If you see this, wait a moment and retry.
 
 ### Debug Mode
+
 Enable verbose logging by running tests with the `-v` flag:
+
 ```bash
 go test -v -run TestJournalIntegrationSuite 2>&1 | tee test_output.log
 ```
@@ -248,6 +279,7 @@ This test demonstrates the same API calls that the MCP tools make:
 - `bokio_get_accounts` → `GET /accounts`
 
 The test validates that these endpoints work correctly with:
+
 - OAuth2 authentication
 - Proper error handling
 - Read-only mode restrictions
@@ -257,16 +289,17 @@ The test validates that these endpoints work correctly with:
 ## 🚦 CI/CD Integration
 
 ### GitHub Actions Example
+
 ```yaml
 name: Integration Tests
 on:
   workflow_dispatch:
     inputs:
       client_id:
-        description: 'Bokio Client ID'
+        description: "Bokio Client ID"
         required: true
       client_secret:
-        description: 'Bokio Client Secret'
+        description: "Bokio Client Secret"
         required: true
 
 jobs:
@@ -276,13 +309,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.24'
+          go-version: "1.24"
       - name: Run Integration Tests
         env:
           BOKIO_CLIENT_ID: ${{ github.event.inputs.client_id }}
           BOKIO_CLIENT_SECRET: ${{ github.event.inputs.client_secret }}
-          BOKIO_READ_ONLY: true  # Safe for CI/CD
-          SKIP_AUTH_TESTS: true  # Skip manual auth in CI
+          BOKIO_READ_ONLY: true # Safe for CI/CD
+          SKIP_AUTH_TESTS: true # Skip manual auth in CI
         run: |
           go test -v -run TestJournalIntegrationSuite
 ```
@@ -297,6 +330,7 @@ go test -v -run TestJournalIntegrationSuite/Test_08_RateLimitingAndRetries
 ```
 
 Expected output:
+
 ```
 📝 Making 5 sequential requests to test rate limiting...
    Request 1: 245ms
@@ -309,6 +343,7 @@ Expected output:
 ```
 
 This validates that:
+
 - API responses are reasonably fast (< 500ms typical)
 - Rate limiting is working as configured
 - Client retry logic functions correctly

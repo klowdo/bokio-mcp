@@ -7,6 +7,7 @@ This file provides guidance to AI assistants (particularly Claude Code) when wor
 The Bokio MCP Server is a Go-based Model Context Protocol server that provides AI assistants with secure access to the Bokio accounting API. It implements OAuth2 authentication, comprehensive API coverage, and includes a read-only mode for safe AI interactions.
 
 ### Key Technologies
+
 - **Go 1.24** with tool directives (uses `go tool` commands, NOT `go run`)
 - **Model Context Protocol (MCP)** for AI assistant integration
 - **OAuth2** authentication with token management
@@ -17,6 +18,7 @@ The Bokio MCP Server is a Go-based Model Context Protocol server that provides A
 ## 🏗️ Project Architecture
 
 ### Directory Structure
+
 ```
 bokio-mcp/
 ├── main.go                 # Entry point, server setup, tool registration
@@ -40,7 +42,9 @@ bokio-mcp/
 ### Core Components
 
 #### MCP Tool Registration Pattern
+
 All MCP tools are registered in `main.go` using this pattern:
+
 ```go
 // Register tools with the server
 if err := tools.RegisterAuthTools(server, bokioClient); err != nil {
@@ -49,11 +53,13 @@ if err := tools.RegisterAuthTools(server, bokioClient); err != nil {
 ```
 
 #### Read-Only Mode
+
 The server supports a read-only mode via `BOKIO_READ_ONLY=true` environment variable that disables all write operations while maintaining full read access.
 
 ## 🔧 Development Workflow
 
 ### Environment Setup
+
 ```bash
 # Option 1: Using Nix (recommended)
 nix develop
@@ -66,6 +72,7 @@ make info  # Shows project status and tool availability
 ```
 
 ### Daily Development Commands
+
 ```bash
 # Update API schemas and regenerate types
 make update-schema && make generate-types
@@ -90,6 +97,7 @@ make pre-commit
 ```
 
 ### Go 1.24 Tool Directives
+
 **CRITICAL**: This project uses Go 1.24's tool directive system. Always use `go tool` commands, never `go run`:
 
 ```bash
@@ -103,6 +111,7 @@ go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
 ```
 
 Tools are declared in `go.mod`:
+
 ```go
 tool (
     github.com/deepmap/oapi-codegen/cmd/oapi-codegen
@@ -117,6 +126,7 @@ tool (
 Follow these conventions for consistent git history:
 
 ### Bug Fixes
+
 ```
 fix: resolve OAuth token refresh issue
 fix: handle empty customer list response
@@ -124,6 +134,7 @@ fix: validate invoice date format in create tool
 ```
 
 ### New Features
+
 ```
 feat: add journal entry reversal support
 feat: implement file upload tool with progress tracking
@@ -131,18 +142,21 @@ feat: add pagination support to customer listing
 ```
 
 ### API Schema Updates
+
 ```
 schema: update Bokio API specifications to latest version
 schema: add new invoice status fields from API v2.1
 ```
 
 ### Generated Code Updates
+
 ```
 gen: regenerate types from updated API schemas
 gen: update client code after schema changes
 ```
 
 ### Build System Changes
+
 ```
 build: update Go to 1.24 and migrate to tool directives
 build: add security scanning to CI pipeline
@@ -150,12 +164,14 @@ build: optimize Docker build with multi-stage approach
 ```
 
 ### Documentation
+
 ```
 docs: add MCP usage examples to README
 docs: update API authentication flow documentation
 ```
 
 ### Refactoring
+
 ```
 refactor: extract common OAuth error handling
 refactor: simplify MCP tool registration pattern
@@ -164,6 +180,7 @@ refactor: simplify MCP tool registration pattern
 ## 🔄 API Schema Update Procedures
 
 ### Complete Schema Update Workflow
+
 ```bash
 # 1. Download latest schemas from Bokio GitHub
 make update-schema
@@ -196,10 +213,12 @@ git commit -m "feat: adapt to new API endpoints in schema update"
 ```
 
 ### Schema Sources
+
 - **Company API**: `https://raw.githubusercontent.com/bokio/bokio-api/v1/api-specification/company-api.yaml`
 - **General API**: `https://raw.githubusercontent.com/bokio/bokio-api/v1/api-specification/general-api.yaml`
 
 ### Generated Files (Never Edit Manually)
+
 - `bokio/generated/company_types.go`
 - `bokio/generated/general_types.go`
 - `bokio/generated/company_client.go`
@@ -208,6 +227,7 @@ git commit -m "feat: adapt to new API endpoints in schema update"
 ## 🧪 Testing & Quality Assurance
 
 ### Testing Strategy
+
 ```bash
 # Run all tests with race detection and coverage
 make test
@@ -220,6 +240,7 @@ go test ./tools/... -v
 ```
 
 ### Code Quality Pipeline
+
 ```bash
 # Lint with golangci-lint (comprehensive rules)
 make lint
@@ -235,6 +256,7 @@ make pre-commit  # deps → lint → test → security → build
 ```
 
 ### Development Server Testing
+
 ```bash
 # Start development server with enhanced logging
 make dev
@@ -246,13 +268,16 @@ make dev
 ## 🔐 Authentication & Security
 
 ### OAuth2 Flow Implementation
+
 1. **Start Authentication**: Use `bokio_authenticate` tool
 2. **User Authorization**: User visits returned URL and authorizes
 3. **Token Exchange**: Use `bokio_exchange_token` with authorization code
 4. **Connection Verification**: Use `bokio_check_auth` to verify status
 
 ### Read-Only Mode
+
 Enable for safe AI assistant operations:
+
 ```bash
 export BOKIO_READ_ONLY=true
 ```
@@ -265,6 +290,7 @@ This disables all write operations (`create_*`, `update_*`, `delete_*`) while ma
 
 1. **Create Tool File** in `tools/` directory
 2. **Define Parameter & Result Structs**:
+
 ```go
 type NewToolParams struct {
     Field string `json:"field"`
@@ -278,6 +304,7 @@ type NewToolResult struct {
 ```
 
 3. **Implement Tool Registration Function**:
+
 ```go
 func RegisterNewTools(server *mcp.Server, client *bokio.Client) error {
     tool := mcp.NewServerTool[NewToolParams, NewToolResult](
@@ -300,6 +327,7 @@ func RegisterNewTools(server *mcp.Server, client *bokio.Client) error {
 ```
 
 4. **Register in main.go**:
+
 ```go
 if err := tools.RegisterNewTools(server, bokioClient); err != nil {
     return fmt.Errorf("failed to register new tools: %w", err)
@@ -307,7 +335,9 @@ if err := tools.RegisterNewTools(server, bokioClient); err != nil {
 ```
 
 ### Read-Only Mode Implementation
+
 Check for read-only mode in write operations:
+
 ```go
 if client.GetConfig().ReadOnly {
     return &mcp.CallToolResultFor[Result]{
@@ -323,6 +353,7 @@ if client.GetConfig().ReadOnly {
 ## 🚀 Release Management
 
 ### Pre-Release Checklist
+
 ```bash
 # 1. Update schemas and regenerate types
 make update-schema && make generate-types
@@ -344,6 +375,7 @@ make release
 ```
 
 ### Version Management
+
 - Use semantic versioning (v1.2.3)
 - Tag releases with `make tag VERSION=vX.Y.Z`
 - Use `make release-dry` to test GoReleaser configuration
@@ -353,22 +385,27 @@ make release
 ### Common Issues
 
 #### "go tool: command not found"
+
 - **Cause**: Using wrong Go version or tools not installed
 - **Solution**: Ensure Go 1.24 and use `nix develop` environment
 
 #### Generated files out of sync
+
 - **Cause**: Schema updated but types not regenerated
 - **Solution**: `make clean && make generate-types`
 
 #### OAuth authentication fails
+
 - **Cause**: Invalid client credentials or redirect URI mismatch
 - **Solution**: Verify `BOKIO_CLIENT_ID`, `BOKIO_CLIENT_SECRET`, and `BOKIO_REDIRECT_URL`
 
 #### MCP client connection issues
+
 - **Cause**: Server not running or stdio transport issues
 - **Solution**: Check server logs, verify MCP client configuration
 
 ### Debug Commands
+
 ```bash
 # Show project status and dependencies
 make info
@@ -388,6 +425,7 @@ go build -gcflags="all=-N -l" -o bin/bokio-mcp-debug .
 The project includes 25+ Make targets for automation:
 
 ### Primary Development
+
 - `make update-schema` - Download latest Bokio API specs
 - `make generate-types` - Generate Go types from OpenAPI
 - `make build` - Build the MCP server binary
@@ -397,40 +435,47 @@ The project includes 25+ Make targets for automation:
 - `make security` - Security scanning
 
 ### Quality Assurance
+
 - `make pre-commit` - Full pipeline (deps, lint, test, security, build)
 - `make format` - Format all Go code
 - `make clean` - Clean build artifacts
 
 ### Release Management
+
 - `make release-dry` - Test release configuration
 - `make tag VERSION=vX.Y.Z` - Create and push version tag
 - `make release` - Create GitHub release
 
 ### Information
+
 - `make info` - Show project status and configuration
 - `make help` - Show all available targets
 
 ## 🎯 Development Best Practices
 
 ### Code Organization
+
 - Keep MCP tools focused and single-purpose
 - Use consistent error handling patterns
 - Implement proper logging with slog
 - Follow Go naming conventions
 
 ### API Integration
+
 - Always validate API responses
 - Implement proper rate limiting respect
 - Handle authentication errors gracefully
 - Use generated types for type safety
 
 ### Testing
+
 - Write tests for all MCP tools
 - Test both success and error scenarios
 - Include authentication flow testing
 - Test read-only mode restrictions
 
 ### Git Workflow
+
 - Make atomic commits with clear messages
 - Separate schema updates from code changes
 - Test thoroughly before committing

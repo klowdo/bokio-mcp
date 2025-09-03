@@ -41,6 +41,7 @@ When invoked, you must follow these steps:
    - `chore:` for maintenance tasks
 
 **Best Practices:**
+
 - Always use `gofmt` or `goimports` for consistent formatting
 - Implement proper error handling - never ignore errors
 - Use meaningful variable and function names

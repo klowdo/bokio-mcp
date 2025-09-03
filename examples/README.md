@@ -26,6 +26,7 @@ export BOKIO_BASE_URL="https://api.bokio.se"
 Fetches and displays the latest 5 journal entries from your Bokio company using only the generated API clients.
 
 **Run**:
+
 ```bash
 # Build and run the example
 nix develop -c go run examples/list_journal_entries.go
@@ -36,6 +37,7 @@ nix develop -c go build -o bin/list-journal-entries examples/list_journal_entrie
 ```
 
 **What it does**:
+
 - ✅ Uses ONLY generated `company.Client.GetJournalentry()` method
 - ✅ Authenticates with Bearer token from environment
 - ✅ Fetches latest 5 journal entries
@@ -43,6 +45,7 @@ nix develop -c go build -o bin/list-journal-entries examples/list_journal_entrie
 - ✅ Shows summary of journal entry IDs, titles, and dates
 
 **Example Output**:
+
 ```
 🚀 Fetching latest 5 journal entries from Bokio API
 📊 Company ID: 123e4567-e89b-12d3-a456-426614174000

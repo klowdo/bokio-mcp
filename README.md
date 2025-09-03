@@ -276,11 +276,13 @@ In read-only mode, all write operations (`create_*`, `update_*`, `delete_*`) are
 ## 🛠️ Development
 
 ### Prerequisites
+
 - Go 1.23+
 - Make
 - Git
 
 ### Development Commands
+
 ```bash
 # Update OpenAPI schemas
 make update-schema
@@ -308,6 +310,7 @@ make help
 ```
 
 ### Project Structure
+
 ```
 bokio-mcp/
 ├── main.go              # Entry point and server setup
@@ -344,6 +347,7 @@ open coverage.html
 ## 🚢 Deployment
 
 ### Docker Deployment
+
 ```dockerfile
 FROM golang:1.23-alpine AS builder
 WORKDIR /app
@@ -357,6 +361,7 @@ ENTRYPOINT ["/bokio-mcp"]
 ```
 
 ### Systemd Service
+
 ```ini
 [Unit]
 Description=Bokio MCP Server

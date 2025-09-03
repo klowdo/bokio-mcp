@@ -20,9 +20,9 @@ func TestLoadConfig(t *testing.T) {
 		expected    *bokio.Config
 	}{
 		{
-			name:     "valid config with all env vars",
-			envToken: "test-integration-token-123",
-			envBaseURL: "https://test.api.bokio.se",
+			name:        "valid config with all env vars",
+			envToken:    "test-integration-token-123",
+			envBaseURL:  "https://test.api.bokio.se",
 			envReadOnly: "true",
 			expectError: false,
 			expected: &bokio.Config{
@@ -48,8 +48,8 @@ func TestLoadConfig(t *testing.T) {
 			errorMsg:    "BOKIO_INTEGRATION_TOKEN is required",
 		},
 		{
-			name:       "read-only mode variations",
-			envToken:   "test-token",
+			name:        "read-only mode variations",
+			envToken:    "test-token",
 			envReadOnly: "false",
 			expectError: false,
 			expected: &bokio.Config{
@@ -109,9 +109,9 @@ func TestLoadConfig(t *testing.T) {
 func TestLoadConfigFromEnvironment(t *testing.T) {
 	// Test direct usage of bokio.LoadConfigFromEnv which is used by loadConfig
 	tests := []struct {
-		name        string
-		setupEnv    func()
-		expected    *bokio.Config
+		name     string
+		setupEnv func()
+		expected *bokio.Config
 	}{
 		{
 			name: "default configuration",
@@ -184,7 +184,7 @@ func TestConfigurationEdgeCases(t *testing.T) {
 		},
 		{
 			name:     "read-only with '1'",
-			token:    "test-token", 
+			token:    "test-token",
 			readOnly: "1",
 			expected: false, // Only exactly "true" should be true
 		},
@@ -292,11 +292,11 @@ func TestConfigValidationLogic(t *testing.T) {
 
 func TestEnvironmentVariablesPrecedence(t *testing.T) {
 	// Test that environment variables have correct precedence and defaults
-	
+
 	// Test default values when no env vars are set
 	t.Run("defaults", func(t *testing.T) {
 		os.Unsetenv("BOKIO_INTEGRATION_TOKEN")
-		os.Unsetenv("BOKIO_BASE_URL") 
+		os.Unsetenv("BOKIO_BASE_URL")
 		os.Unsetenv("BOKIO_READ_ONLY")
 
 		defer func() {
@@ -308,7 +308,7 @@ func TestEnvironmentVariablesPrecedence(t *testing.T) {
 		config := bokio.LoadConfigFromEnv()
 		assert.Equal(t, "", config.IntegrationToken)
 		assert.Equal(t, "https://api.bokio.se", config.BaseURL) // Default
-		assert.Equal(t, false, config.ReadOnly) // Default
+		assert.Equal(t, false, config.ReadOnly)                 // Default
 	})
 
 	// Test override of defaults

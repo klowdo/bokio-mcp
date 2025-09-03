@@ -78,9 +78,9 @@ func TestReadOnlyModeValidation(t *testing.T) {
 func TestReadOnlyModeErrorMessages(t *testing.T) {
 	// Test that read-only mode returns appropriate error messages
 	tests := []struct {
-		name         string
-		operation    string
-		expectedMsg  string
+		name        string
+		operation   string
+		expectedMsg string
 	}{
 		{
 			name:        "create operation blocked",
@@ -110,19 +110,19 @@ func TestReadOnlyModeErrorMessages(t *testing.T) {
 func TestReadOnlyModeConfiguration(t *testing.T) {
 	// Test various ways read-only mode can be configured
 	tests := []struct {
-		name            string
-		envValue        string
-		configValue     bool
+		name             string
+		envValue         string
+		configValue      bool
 		expectedReadOnly bool
 	}{
 		{
-			name:            "explicit true in config",
-			configValue:     true,
+			name:             "explicit true in config",
+			configValue:      true,
 			expectedReadOnly: true,
 		},
 		{
-			name:            "explicit false in config",
-			configValue:     false,
+			name:             "explicit false in config",
+			configValue:      false,
 			expectedReadOnly: false,
 		},
 	}

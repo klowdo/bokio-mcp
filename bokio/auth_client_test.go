@@ -31,9 +31,9 @@ func TestConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "valid config with defaults",
-			token:   "test-token-456",
-			baseURL: "",
+			name:     "valid config with defaults",
+			token:    "test-token-456",
+			baseURL:  "",
 			readOnly: "false",
 			want: &Config{
 				IntegrationToken: "test-token-456",
@@ -42,9 +42,9 @@ func TestConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "empty token",
-			token:   "",
-			baseURL: "https://api.bokio.se",
+			name:     "empty token",
+			token:    "",
+			baseURL:  "https://api.bokio.se",
 			readOnly: "false",
 			want: &Config{
 				IntegrationToken: "",

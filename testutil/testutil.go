@@ -101,10 +101,10 @@ func AssertValidJSON(t *testing.T, jsonStr string) {
 var (
 	// TestCompanyID is a standard test company ID
 	TestCompanyID = "test-company-123"
-	
+
 	// TestCustomerID is a standard test customer ID
 	TestCustomerID = "test-customer-456"
-	
+
 	// TestToken is a standard test authentication token
 	TestToken = "test-integration-token-789"
 )

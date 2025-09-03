@@ -129,7 +129,7 @@ func TestTestConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := TestConfig(tt.opts...)
-			
+
 			assert.Equal(t, tt.want["token"], config.IntegrationToken)
 			assert.Equal(t, tt.want["base_url"], config.BaseURL)
 			assert.Equal(t, tt.want["read_only"], config.ReadOnly)
@@ -155,8 +155,8 @@ func TestCreateTestClient(t *testing.T) {
 			},
 		},
 		{
-			name: "empty token should fail",
-			opts: []ConfigOption{WithToken("")},
+			name:    "empty token should fail",
+			opts:    []ConfigOption{WithToken("")},
 			wantErr: true,
 		},
 	}
@@ -191,11 +191,11 @@ func TestTestDataHelpers(t *testing.T) {
 	// Test helper functions return valid data structures
 	t.Run("ValidCustomersListParams", func(t *testing.T) {
 		params := ValidCustomersListParams()
-		
+
 		assert.Equal(t, TestCompanyID, params["company_id"])
 		assert.Equal(t, 1, params["page"])
 		assert.Equal(t, 25, params["page_size"])
-		
+
 		// Should be valid JSON
 		data, err := json.Marshal(params)
 		require.NoError(t, err)
@@ -204,12 +204,12 @@ func TestTestDataHelpers(t *testing.T) {
 
 	t.Run("ValidCustomerCreateParams", func(t *testing.T) {
 		params := ValidCustomerCreateParams()
-		
+
 		assert.Equal(t, TestCompanyID, params["company_id"])
 		assert.Equal(t, "Test Customer", params["name"])
 		assert.Equal(t, "private", params["type"])
 		assert.Equal(t, "test@example.com", params["email"])
-		
+
 		// Should be valid JSON
 		data, err := json.Marshal(params)
 		require.NoError(t, err)
@@ -218,12 +218,12 @@ func TestTestDataHelpers(t *testing.T) {
 
 	t.Run("ValidCustomerUpdateParams", func(t *testing.T) {
 		params := ValidCustomerUpdateParams()
-		
+
 		assert.Equal(t, TestCompanyID, params["company_id"])
 		assert.Equal(t, TestCustomerID, params["customer_id"])
 		assert.Equal(t, "Updated Test Customer", params["name"])
 		assert.Equal(t, "updated@example.com", params["email"])
-		
+
 		// Should be valid JSON
 		data, err := json.Marshal(params)
 		require.NoError(t, err)
@@ -235,10 +235,10 @@ func TestMockResponses(t *testing.T) {
 	t.Run("MockSuccessResponse", func(t *testing.T) {
 		data := map[string]string{"id": "123", "name": "test"}
 		response := MockSuccessResponse(data)
-		
+
 		assert.Equal(t, true, response["success"])
 		assert.Equal(t, data, response["data"])
-		
+
 		// Should be valid JSON
 		jsonData, err := json.Marshal(response)
 		require.NoError(t, err)
@@ -248,10 +248,10 @@ func TestMockResponses(t *testing.T) {
 	t.Run("MockErrorResponse", func(t *testing.T) {
 		errorMsg := "Test error message"
 		response := MockErrorResponse(errorMsg)
-		
+
 		assert.Equal(t, false, response["success"])
 		assert.Equal(t, errorMsg, response["error"])
-		
+
 		// Should be valid JSON
 		jsonData, err := json.Marshal(response)
 		require.NoError(t, err)

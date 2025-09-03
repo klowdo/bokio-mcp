@@ -24,23 +24,26 @@
       # Schema files are now stored locally in the repository
       # Use `make update-schema` to download the latest versions
 
-      # Pre-commit hooks configuration
+      # Pre-commit hooks configuration using git-hooks.nix
+      # Using minimal set of known working hooks
       pre-commit-check = pre-commit-hooks.lib.${system}.run {
         src = ./.;
         hooks = {
-          # Use our custom make-based hooks by referencing the config file
-          # The actual hooks are defined in .pre-commit-config.yaml
-          nixpkgs-fmt.enable = true; # Format Nix files
+          # Nix formatting
+          nixpkgs-fmt.enable = true;
+
+          # Go formatting
+          gofmt.enable = true;
+
+          # YAML/JSON formatting (excluding downloaded schemas)
           prettier = {
             enable = true;
-            excludes = [ "schemas/.*\\.ya?ml" ]; # Don't format downloaded API schemas
+            excludes = [ "schemas/.*\\.ya?ml" ];
             settings = {
               tab-width = 2;
             };
           };
         };
-        # Override to use our comprehensive .pre-commit-config.yaml
-        settings.ormolu.defaultExtensions = [ ];
       };
 
       buildInputs = with pkgs; [
@@ -58,8 +61,7 @@
         gnumake
         curl
         jq
-        # Pre-commit and related tools
-        pre-commit
+        # Code formatting tools (used by git-hooks)
         nixpkgs-fmt
         nodePackages.prettier
       ];
@@ -79,9 +81,8 @@
           echo "  make lint               - Run linting and formatting"
           echo "  make security           - Run security scans"
           echo ""
-          echo "Pre-commit hooks:"
-          echo "  make pre-commit-install - Install pre-commit hooks"
-          echo "  make pre-commit-run     - Run hooks on all files"
+          echo "Code Quality:"
+          echo "  nix flake check         - Run git-hooks and quality checks"
           echo "  make pre-commit         - Run full pre-commit pipeline"
           echo ""
           ${pre-commit-check.shellHook}

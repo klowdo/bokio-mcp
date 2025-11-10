@@ -8,7 +8,7 @@ info:
     url: https://docs.bokio.se
     email: support@bokio.se
 servers:
-  - url: https://api.bokio.se
+  - url: https://api.bokio.se/v1
     description: Bokio API
     x-bokio-api: true
 tags:
@@ -183,7 +183,7 @@ paths:
                     type: string
                   error_description:
                     type: string
-  /v1/connections:
+  /connections:
     get:
       tags:
         - connections
@@ -197,6 +197,30 @@ paths:
           schema:
             type: string
             default: application/json
+        - name: page
+          description: Page number (starting from 1)
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          description: Number of items per page (max 100)
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tenantId
+          description: Filter connections by tenant ID
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Connections found
@@ -285,6 +309,9 @@ components:
         tenantId:
           type: string
           format: uuid
+        tenantName:
+          type: string
+          description: The name of the tenant (company)
         type:
           type: string
           enum:

@@ -1,0 +1,295 @@
+openapi: 3.0.3
+info:
+  version: "1.0"
+  title: General API
+  description: Bokio General API
+  contact:
+    name: Bokio
+    url: https://docs.bokio.se
+    email: support@bokio.se
+servers:
+  - url: https://api.bokio.se
+    description: Bokio API
+    x-bokio-api: true
+tags:
+  - name: authorization
+    description: Authorization operations for OAuth 2.0 Grants
+  - name: connections
+    description: Connections operations
+externalDocs:
+  url: https://docs.bokio.se
+  description: Read the API Documentation
+paths:
+  /token:
+    post:
+      tags:
+        - authorization
+      summary: Obtain access token
+      description: |
+        OAuth 2.0 token endpoint to exchange authorization code for access token, request token with client credentials, or refresh an existing token.
+
+        - Use Authorization Code grant to obtain access token for a Company to use with the Company API.
+        - Use Refresh Token grant to obtain a new access token using a refresh token.
+        - Use Client Credentials grant to obtain access token for the General API.
+      operationId: request-token
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                  enum:
+                    - client_credentials
+                    - authorization_code
+                    - refresh_token
+                  description: The grant type for the token request
+              required:
+                - grant_type
+              oneOf:
+                - title: Authorization Code Grant
+                  properties:
+                    grant_type:
+                      enum:
+                        - authorization_code
+                    code:
+                      type: string
+                      description: The authorization code received from the authorization server (required for authorization_code grant type)
+                    redirect_uri:
+                      type: string
+                      description: The redirect URI used in the authorization request (required for authorization_code grant type)
+                  required:
+                    - grant_type
+                    - code
+                    - redirect_uri
+                - title: Refresh Token Grant
+                  properties:
+                    grant_type:
+                      enum:
+                        - refresh_token
+                    refresh_token:
+                      type: string
+                      description: The refresh token received from a previous token request (required for refresh_token grant type)
+                  required:
+                    - grant_type
+                    - refresh_token
+                - title: Client Credentials Grant
+                  properties:
+                    grant_type:
+                      enum:
+                        - client_credentials
+                  required:
+                    - grant_type
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/token"
+              examples:
+                Valid Token:
+                  value:
+                    tenant_id: ea9ee4dd-fae3-4aec-a7db-6fc9cc1f8135
+                    tenant_type: company
+                    access_token: tffNhGDZ1FCpEWMkHduTA9FBnvNptzWSUfIlbcBHpdG5YJL
+                    token_type: bearer
+                    expires_in: 3600
+                    refresh_token: RpV4TYS8Z1KnJHpAqPJzXtl5QDl6OuK6NrQJk2FfLrGzKiM
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  error_description:
+                    type: string
+      security:
+        - client_auth: []
+  /authorize:
+    get:
+      tags:
+        - authorization
+      summary: Authorize the client
+      description: |
+        OAuth 2.0 authorization endpoint to initiate the OAuth 2.0 Authorization Code grant to obtain an authorization code to exchange for an access token.
+
+        Use Authorization Code grant to obtain access token for a Company.
+      operationId: authorize
+      parameters:
+        - name: response_type
+          description: The response type for the authorization request
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - code
+        - name: client_id
+          description: The client ID for the authorization request
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: redirect_uri
+          in: query
+          required: true
+          description: The URI to redirect the user to after authorization. Must match one of the redirect URIs registered for the client.
+          schema:
+            type: string
+            format: uri
+        - name: scope
+          description: The scope for the authorization request
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          description: An opaque value used by the client to maintain state between the request and callback. Required as protection against CSRF (cross-site request forgery) attacks.
+          schema:
+            type: string
+        - name: bokio_tenantid
+          in: query
+          required: false
+          description: The Bokio tenant ID to authorize the integration to have access. Bokioio company ID will be the teant ID when the tenant_type is `company`.
+          schema:
+            type: string
+            format: uuid
+        - name: bokio_tenanttype
+          in: query
+          required: false
+          description: The Bokio tenant type to authorize the integration to have access. Currently support only `company` tenant type.
+          schema:
+            type: string
+            enum:
+              - company
+      responses:
+        "302":
+          description: Redirects to the client's redirect URI with an authorization code when the user has authorized the client
+        "400":
+          description: The request is invalid or missing required parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  error_description:
+                    type: string
+  /v1/connections:
+    get:
+      tags:
+        - connections
+      summary: Get connections
+      description: Retrieve a list of connections for the authenticated client
+      operationId: get-connections
+      parameters:
+        - name: Content-Type
+          description: The scope for the authorization request
+          in: header
+          schema:
+            type: string
+            default: application/json
+      responses:
+        "200":
+          description: Connections found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/pagedResponse"
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/connection"
+      security:
+        - tokenAuth: []
+        - access_token: []
+components:
+  securitySchemes:
+    tokenAuth:
+      type: http
+      scheme: bearer
+    access_token:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /token
+          scopes: {}
+        authorizationCode:
+          authorizationUrl: /authorize
+          tokenUrl: /token
+          scopes:
+            invoices: Read and write access to invoices, customers and items
+            accounting: Read and write access to journal entries
+            uploads: Read and write access to uploads
+    client_auth:
+      type: http
+      scheme: basic
+  schemas:
+    token:
+      type: object
+      title: Token
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+          description: The id for the tenant that for this token. This field will be empty when the tenant_type is `general`
+        tenant_type:
+          type: string
+          enum:
+            - general
+            - company
+          description: The type of tenant that for this token.
+        access_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+          format: int32
+        refresh_token:
+          type: string
+          description: Returned for authorization_code and refresh_token grant types. The client_credentials grant expected that refresh are done by making another `/token` request with client_credentials grant.
+    pagedResponse:
+      type: object
+      title: pagedResponse
+      properties:
+        totalItems:
+          type: integer
+          format: int32
+          example: 1
+        totalPages:
+          type: integer
+          format: int32
+          example: 1
+        currentPage:
+          type: integer
+          format: int32
+          example: 1
+    connection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - company
+          description: The type of connection (e.g., company)
+x-readme:
+  explorer-enabled: true
+  proxy-enabled: true

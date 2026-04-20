@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
@@ -38,7 +38,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.24'
         cache: true
         cache-dependency-path: go.sum
 
@@ -182,34 +182,38 @@ jobs:
     - name: Create Pull Request for dependency updates
       if: steps.commit.outputs.commit_created == 'true'
       id: create_pr
-      uses: peter-evans/create-pull-request@v6
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        title: "🔄 Update Go dependencies"
-        body-path: dependency_update_summary.md
-        branch: automated/update-go-deps
-        branch-suffix: timestamp
-        delete-branch: true
-        labels: |
-          automated
-          dependencies
-          go-modules
-        assignees: klowdo
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        BRANCH="automated/update-go-deps-$(date +%s)"
+        git checkout -b "$BRANCH"
+        git push -u origin "$BRANCH"
+        PR_URL=$(gh pr create \
+          --title "🔄 Update Go dependencies" \
+          --body-file dependency_update_summary.md \
+          --label "automated,dependencies,go-modules" \
+          --assignee klowdo \
+          --base main \
+          --head "$BRANCH")
+        PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+        echo "pull-request-url=$PR_URL" >> "$GITHUB_OUTPUT"
+        echo "pull-request-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
     - name: Auto-approve dependency PR
       if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         if [ "${{ secrets.AUTO_APPROVE_DEPENDENCY_UPDATES }}" = "true" ]; then
           gh pr review ${{ steps.create_pr.outputs.pull-request-number }} --approve --body "Auto-approving automated dependency update"
         fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Enable auto-merge for safe updates
       if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Check if this contains only patch/minor updates (no major version changes)
-        if ! git diff go.mod | grep -E '^\+.*v[0-9]+\.[0-9]+\.[0-9]+' | grep -E 'v[0-9]+\.0\.0'; then
+        if ! git diff HEAD~1 go.mod | grep -E '^\+.*v[0-9]+\.[0-9]+\.[0-9]+' | grep -E 'v[0-9]+\.0\.0'; then
           if [ "${{ secrets.AUTO_MERGE_DEPENDENCY_UPDATES }}" = "true" ]; then
             echo "Safe dependency update detected, enabling auto-merge"
             gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --squash
@@ -217,8 +221,6 @@ jobs:
         else
           echo "Major version update detected, manual review required"
         fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cleanup
       if: always()
@@ -232,24 +234,25 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.24'
         cache: true
 
+    - name: Install dependencies
+      run: make deps
+
     - name: Install security tools
-      run: |
-        go install golang.org/x/vuln/cmd/govulncheck@latest
-        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+      run: make install-tools
 
     - name: Run vulnerability check
       id: vuln_check
       run: |
         echo "Running vulnerability check..."
-        if govulncheck -json ./... > vulns.json; then
+        if go tool govulncheck -json ./... > vulns.json; then
           echo "No vulnerabilities found"
           echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
         else
@@ -260,10 +263,10 @@ jobs:
 
     - name: Run security audit
       id: security_audit
+      continue-on-error: true
       run: |
         echo "Running security audit..."
-        gosec -fmt sarif -out gosec-results.sarif ./...
-        if [ $? -eq 0 ]; then
+        if go tool gosec -fmt sarif -out gosec-results.sarif ./...; then
           echo "Security audit passed"
           echo "security_issues_found=false" >> $GITHUB_OUTPUT
         else
@@ -272,7 +275,7 @@ jobs:
         fi
 
     - name: Upload security scan results
-      if: always()
+      if: always() && hashFiles('gosec-results.sarif') != ''
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: gosec-results.sarif

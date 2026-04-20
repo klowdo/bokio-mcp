@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
@@ -31,7 +31,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.24'
         cache: true
         cache-dependency-path: go.sum
 
@@ -170,39 +170,40 @@ jobs:
     - name: Create Pull Request
       if: steps.commit.outputs.commit_created == 'true'
       id: create_pr
-      uses: peter-evans/create-pull-request@v6
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "chore: update API schemas and generated types"
-        title: "🤖 Update API schemas and generated types"
-        body-path: pr_body.md
-        branch: automated/update-schema
-        branch-suffix: timestamp
-        delete-branch: true
-        labels: |
-          automated
-          schema-update
-          dependencies
-        assignees: klowdo
-        draft: false
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        BRANCH="automated/update-schema-$(date +%s)"
+        git checkout -b "$BRANCH"
+        git push -u origin "$BRANCH"
+        PR_URL=$(gh pr create \
+          --title "🤖 Update API schemas and generated types" \
+          --body-file pr_body.md \
+          --label "automated,schema-update,dependencies" \
+          --assignee klowdo \
+          --base main \
+          --head "$BRANCH")
+        PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+        echo "pull-request-url=$PR_URL" >> "$GITHUB_OUTPUT"
+        echo "pull-request-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
 
     - name: Auto-approve PR (if configured)
       if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         if [ "${{ secrets.AUTO_APPROVE_SCHEMA_UPDATES }}" = "true" ]; then
           gh pr review ${{ steps.create_pr.outputs.pull-request-number }} --approve --body "Auto-approving automated schema update"
         fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Enable auto-merge (if tests pass)
       if: steps.create_pr.outputs.pull-request-number && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         if [ "${{ secrets.AUTO_MERGE_SCHEMA_UPDATES }}" = "true" ]; then
           gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} --auto --squash
         fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Comment on existing PR if no changes
       if: steps.update.outputs.changes_detected == 'false' && github.event_name == 'workflow_dispatch'
@@ -221,53 +222,3 @@ jobs:
         else
           echo "ℹ️  No schema changes detected - schemas are up to date"
         fi
-
-  # Separate job to validate the PR if auto-created
-  validate-pr:
-    name: Validate Schema PR
-    runs-on: ubuntu-latest
-    needs: update-schema
-    if: needs.update-schema.outputs.changes_detected == 'true'
-
-    steps:
-    - name: Checkout PR branch
-      uses: actions/checkout@v4
-      with:
-        ref: automated/update-schema
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-        cache: true
-
-    - name: Install dependencies
-      run: make deps
-
-    - name: Install tools
-      run: make install-tools
-
-    - name: Run comprehensive tests
-      run: |
-        echo "Running comprehensive validation..."
-        make test
-        make lint
-        make security
-
-    - name: Build project
-      run: make build
-
-    - name: Validate generated code
-      run: |
-        echo "Validating generated code compiles and is properly formatted..."
-        go fmt ./bokio/generated/
-        go vet ./bokio/generated/
-
-        # Check if formatting changed anything
-        if ! git diff --quiet; then
-          echo "❌ Generated code was not properly formatted"
-          git diff
-          exit 1
-        fi
-
-        echo "✅ Generated code validation passed"

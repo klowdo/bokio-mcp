@@ -63,7 +63,6 @@
         jq
         # Code formatting tools (used by git-hooks)
         nixpkgs-fmt
-        nodePackages.prettier
       ];
     in
     {

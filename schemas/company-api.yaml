@@ -7789,6 +7789,7 @@ components:
           description: The date of the settlement
         sumBaseCurrency:
           type: number
+          format: decimal
           description: The settlement amount in base currency
       example:
         date: 2024-10-15
@@ -7806,6 +7807,7 @@ components:
           description: The date of the settlement
         sumBaseCurrency:
           type: number
+          format: decimal
           description: The settlement amount in base currency. Must be greater than zero.
         vatScheme:
           type: string

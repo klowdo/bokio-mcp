@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -225,8 +226,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 				}, nil
 			}
 
-			// Create the request body based on item type
-			var requestBody company.PostItemJSONRequestBody
+			var itemBody []byte
 
 			if params.Arguments.ItemType == "salesItem" {
 				// Validate required fields for salesItem
@@ -268,7 +268,6 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 					UnitType:    company.SalesItemUnitType(unitType),
 				}
 
-				// Marshal to JSON to create the union type
 				salesItemJSON, err := json.Marshal(salesItem)
 				if err != nil {
 					return &mcp.CallToolResultFor[ItemResult]{
@@ -279,17 +278,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 						},
 					}, nil
 				}
-
-				// Unmarshal into the request body type to handle union type properly
-				if err := json.Unmarshal(salesItemJSON, &requestBody); err != nil {
-					return &mcp.CallToolResultFor[ItemResult]{
-						Content: []mcp.Content{
-							&mcp.TextContent{
-								Text: fmt.Sprintf("Failed to create request body: %v", err),
-							},
-						},
-					}, nil
-				}
+				itemBody = salesItemJSON
 
 			} else if params.Arguments.ItemType == "descriptionOnlyItem" {
 				descItem := company.DescriptionOnlyItem{
@@ -297,7 +286,6 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 					ItemType:    company.DescriptionOnlyItemItemTypeDescriptionOnlyItem,
 				}
 
-				// Marshal to JSON to create the union type
 				descItemJSON, err := json.Marshal(descItem)
 				if err != nil {
 					return &mcp.CallToolResultFor[ItemResult]{
@@ -308,17 +296,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 						},
 					}, nil
 				}
-
-				// Unmarshal into the request body type to handle union type properly
-				if err := json.Unmarshal(descItemJSON, &requestBody); err != nil {
-					return &mcp.CallToolResultFor[ItemResult]{
-						Content: []mcp.Content{
-							&mcp.TextContent{
-								Text: fmt.Sprintf("Failed to create request body: %v", err),
-							},
-						},
-					}, nil
-				}
+				itemBody = descItemJSON
 
 			} else {
 				return &mcp.CallToolResultFor[ItemResult]{
@@ -330,8 +308,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 				}, nil
 			}
 
-			// Call the generated client method
-			resp, err := client.CompanyClient.PostItem(ctx, companyUUID, requestBody)
+			resp, err := client.CompanyClient.PostItemWithBody(ctx, companyUUID, "application/json", bytes.NewReader(itemBody))
 			if err != nil {
 				return &mcp.CallToolResultFor[ItemResult]{
 					Content: []mcp.Content{
@@ -600,8 +577,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 				}, nil
 			}
 
-			// Create the request body based on item type
-			var requestBody company.PutItemJSONRequestBody
+			var itemBody []byte
 
 			if params.Arguments.ItemType == "salesItem" {
 				// Validate required fields for salesItem
@@ -644,7 +620,6 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 					UnitType:    company.SalesItemUnitType(unitType),
 				}
 
-				// Marshal to JSON to create the union type
 				salesItemJSON, err := json.Marshal(salesItem)
 				if err != nil {
 					return &mcp.CallToolResultFor[ItemResult]{
@@ -655,17 +630,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 						},
 					}, nil
 				}
-
-				// Unmarshal into the request body type to handle union type properly
-				if err := json.Unmarshal(salesItemJSON, &requestBody); err != nil {
-					return &mcp.CallToolResultFor[ItemResult]{
-						Content: []mcp.Content{
-							&mcp.TextContent{
-								Text: fmt.Sprintf("Failed to create request body: %v", err),
-							},
-						},
-					}, nil
-				}
+				itemBody = salesItemJSON
 
 			} else if params.Arguments.ItemType == "descriptionOnlyItem" {
 				descItem := company.DescriptionOnlyItem{
@@ -674,7 +639,6 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 					ItemType:    company.DescriptionOnlyItemItemTypeDescriptionOnlyItem,
 				}
 
-				// Marshal to JSON to create the union type
 				descItemJSON, err := json.Marshal(descItem)
 				if err != nil {
 					return &mcp.CallToolResultFor[ItemResult]{
@@ -685,17 +649,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 						},
 					}, nil
 				}
-
-				// Unmarshal into the request body type to handle union type properly
-				if err := json.Unmarshal(descItemJSON, &requestBody); err != nil {
-					return &mcp.CallToolResultFor[ItemResult]{
-						Content: []mcp.Content{
-							&mcp.TextContent{
-								Text: fmt.Sprintf("Failed to create request body: %v", err),
-							},
-						},
-					}, nil
-				}
+				itemBody = descItemJSON
 
 			} else {
 				return &mcp.CallToolResultFor[ItemResult]{
@@ -707,8 +661,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 				}, nil
 			}
 
-			// Call the generated client method
-			resp, err := client.CompanyClient.PutItem(ctx, companyUUID, itemUUID, requestBody)
+			resp, err := client.CompanyClient.PutItemWithBody(ctx, companyUUID, itemUUID, "application/json", bytes.NewReader(itemBody))
 			if err != nil {
 				return &mcp.CallToolResultFor[ItemResult]{
 					Content: []mcp.Content{

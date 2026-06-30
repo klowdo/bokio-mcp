@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -743,19 +744,7 @@ func RegisterInvoiceTools(server *mcp.Server, client *bokio.AuthClient) error {
 				}, nil
 			}
 
-			var lineItemBody company.PostInvoiceLineItemJSONRequestBody
-			if err := json.Unmarshal(lineItemData, &lineItemBody); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to parse line item data: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Call the generated client method
-			resp, err := client.CompanyClient.PostInvoiceLineItem(ctx, companyUUID, invoiceUUID, lineItemBody)
+			resp, err := client.CompanyClient.PostInvoiceLineItemWithBody(ctx, companyUUID, invoiceUUID, "application/json", bytes.NewReader(lineItemData))
 			if err != nil {
 				return &mcp.CallToolResultFor[InvoiceResult]{
 					Content: []mcp.Content{

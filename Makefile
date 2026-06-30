@@ -207,13 +207,9 @@ test: ## Run all tests with coverage reporting
 		$(call print_status,"Coverage report: coverage.html"); \
 	fi
 
-lint: ## Run golangci-lint for code quality analysis using go tool
+lint: ## Run golangci-lint (version pinned in .tool-versions) for code quality analysis
 	$(call print_status,"Running code quality checks...")
-	@$(call print_status,"Checking golangci-lint configuration...")
-	@if [ ! -f ".golangci.yml" ] && [ ! -f ".golangci.yaml" ]; then \
-		$(call print_warning,"No golangci-lint config found - using defaults"); \
-	fi
-	@if ! go tool golangci-lint run ./...; then \
+	@if ! ./scripts/golint.sh; then \
 		$(call print_error,"Linting failed"); \
 		exit 1; \
 	fi

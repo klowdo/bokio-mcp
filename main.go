@@ -15,7 +15,7 @@ import (
 
 const (
 	serverName    = "bokio-mcp"
-	serverVersion = "0.1.0"
+	serverVersion = "0.1.0" // x-release-please-version
 )
 
 func main() {

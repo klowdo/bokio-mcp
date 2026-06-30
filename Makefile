@@ -91,10 +91,10 @@ endef
 # Tool Installation
 # =============================================================================
 
-install-tools: ## Install Go tools using Go 1.24 tool directives
+install-tools: ## Install Go tools using Go 1.26 tool directives
 	$(call print_status,"Installing Go tools from tool directives...")
-	@if ! go version | grep -q "go1\.24"; then \
-		$(call print_error,"Go 1.24 required for tool directives. Current: $$(go version)"); \
+	@if ! go version | grep -q "go1\.26"; then \
+		$(call print_error,"Go 1.26 required for tool directives. Current: $$(go version)"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Installing oapi-codegen...")
@@ -207,13 +207,9 @@ test: ## Run all tests with coverage reporting
 		$(call print_status,"Coverage report: coverage.html"); \
 	fi
 
-lint: ## Run golangci-lint for code quality analysis using go tool
+lint: ## Run golangci-lint (version pinned in .tool-versions) for code quality analysis
 	$(call print_status,"Running code quality checks...")
-	@$(call print_status,"Checking golangci-lint configuration...")
-	@if [ ! -f ".golangci.yml" ] && [ ! -f ".golangci.yaml" ]; then \
-		$(call print_warning,"No golangci-lint config found - using defaults"); \
-	fi
-	@if ! go tool golangci-lint run ./...; then \
+	@if ! ./scripts/golint.sh; then \
 		$(call print_error,"Linting failed"); \
 		exit 1; \
 	fi

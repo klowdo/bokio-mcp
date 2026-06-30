@@ -57,7 +57,7 @@ When invoked, you must follow these steps:
 - Address root causes rather than symptoms (e.g., fix struct definitions rather than suppress warnings)
 - Maintain consistent code style with the existing codebase
 - Test thoroughly after each batch of fixes to avoid breaking changes
-- Use Go 1.24+ tool directives when available (`go tool` instead of `go run`)
+- Use Go 1.26+ tool directives when available (`go tool` instead of `go run`)
 
 ## Report / Response
 

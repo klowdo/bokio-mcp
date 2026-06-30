@@ -58,7 +58,7 @@ func run(ctx context.Context) error {
 	}
 
 	// Create MCP server
-	server := mcp.NewServer(serverName, serverVersion, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, nil)
 
 	// Register tools with the server using ONLY generated API clients
 
@@ -100,8 +100,7 @@ func run(ctx context.Context) error {
 		"read_only_mode", config.ReadOnly)
 
 	// Create and start the MCP server with stdio transport
-	transport := mcp.NewStdioTransport()
-	return server.Run(ctx, transport)
+	return server.Run(ctx, &mcp.StdioTransport{})
 }
 
 // loadConfig loads configuration from environment variables

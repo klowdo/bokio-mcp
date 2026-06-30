@@ -91,13 +91,13 @@ if command -v nix &> /dev/null; then
 else
     print_warning "Nix not available, using system Go"
     if ! command -v go &> /dev/null; then
-        print_error "Go is not installed. Please install Go 1.24+ or use Nix."
+        print_error "Go is not installed. Please install Go 1.26+ or use Nix."
         exit 1
     fi
 
     GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-    if [[ "$GO_VERSION" < "1.24" ]]; then
-        print_warning "Go version $GO_VERSION detected. Go 1.24+ recommended."
+    if [[ "$GO_VERSION" < "1.26" ]]; then
+        print_warning "Go version $GO_VERSION detected. Go 1.26+ recommended."
     fi
     RUN_CMD="bash -c"
 fi

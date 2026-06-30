@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ Failed to fetch journal entries: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check response status
 	if resp.StatusCode != 200 {

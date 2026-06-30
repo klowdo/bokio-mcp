@@ -53,7 +53,7 @@ func TestMockBokioServer(t *testing.T) {
 
 			resp, err := client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Verify response
 			assert.Equal(t, tt.responseCode, resp.StatusCode)

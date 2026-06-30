@@ -57,19 +57,19 @@ func TestConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set environment variables
-			os.Setenv("BOKIO_INTEGRATION_TOKEN", tt.token)
+			_ = os.Setenv("BOKIO_INTEGRATION_TOKEN", tt.token)
 			if tt.baseURL != "" {
-				os.Setenv("BOKIO_BASE_URL", tt.baseURL)
+				_ = os.Setenv("BOKIO_BASE_URL", tt.baseURL)
 			} else {
-				os.Unsetenv("BOKIO_BASE_URL")
+				_ = os.Unsetenv("BOKIO_BASE_URL")
 			}
-			os.Setenv("BOKIO_READ_ONLY", tt.readOnly)
+			_ = os.Setenv("BOKIO_READ_ONLY", tt.readOnly)
 
 			// Clean up environment variables after test
 			defer func() {
-				os.Unsetenv("BOKIO_INTEGRATION_TOKEN")
-				os.Unsetenv("BOKIO_BASE_URL")
-				os.Unsetenv("BOKIO_READ_ONLY")
+				_ = os.Unsetenv("BOKIO_INTEGRATION_TOKEN")
+				_ = os.Unsetenv("BOKIO_BASE_URL")
+				_ = os.Unsetenv("BOKIO_READ_ONLY")
 			}()
 
 			got := LoadConfigFromEnv()
@@ -198,7 +198,7 @@ func TestAuthenticatedHTTPClient(t *testing.T) {
 			// Make request
 			resp, err := client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 		})

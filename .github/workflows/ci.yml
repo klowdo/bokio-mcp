@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 env:
-  GO_VERSION_MATRIX: '["1.24"]'
+  GO_VERSION_MATRIX: '["1.26"]'
 
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: [1.24]
+        go-version: [1.26]
 
     steps:
     - name: Checkout code
@@ -52,7 +52,7 @@ jobs:
 
     # TODO: Re-enable when tests are added to the project
     # - name: Upload coverage to Codecov
-    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.24'
+    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26'
     #   uses: codecov/codecov-action@v4
     #   with:
     #     file: ./coverage.out
@@ -72,27 +72,18 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version-file: go.mod
         cache: true
         cache-dependency-path: go.sum
-
-    - name: Install dependencies
-      run: make deps
-
-    - name: Install tools
-      run: make install-tools
 
     - name: Generate types
       run: make generate-types
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v9
       with:
-        version: v1.64.8
-        args: --timeout=5m --verbose
-
-    - name: Run custom lint
-      run: make lint
+        version-file: .tool-versions
+        args: --timeout=5m
 
   security:
     name: Security Scan
@@ -105,7 +96,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.26'
         cache: true
         cache-dependency-path: go.sum
 
@@ -119,7 +110,7 @@ jobs:
       run: go tool govulncheck ./...
 
     - name: Run gosec
-      run: go tool gosec -fmt sarif -out gosec-results.sarif ./...
+      run: go tool gosec -exclude-dir=bokio/generated -fmt sarif -out gosec-results.sarif ./...
       continue-on-error: true
 
     - name: Upload SARIF file
@@ -183,7 +174,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.26'
         cache: true
 
     - name: Install dependencies

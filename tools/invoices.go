@@ -16,42 +16,42 @@ import (
 
 // InvoiceListParams defines parameters for listing invoices
 type InvoiceListParams struct {
-	CompanyID string  `json:"company_id"`
-	Page      *int32  `json:"page,omitempty"`
-	PageSize  *int32  `json:"page_size,omitempty"`
-	Query     *string `json:"query,omitempty"`
+	CompanyID string  `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	Page      *int32  `json:"page,omitempty" jsonschema:"Page number (optional)"`
+	PageSize  *int32  `json:"page_size,omitempty" jsonschema:"Items per page (optional)"`
+	Query     *string `json:"query,omitempty" jsonschema:"Optional query to filter the data set (optional)"`
 }
 
 // InvoiceCreateParams defines parameters for creating invoices
 type InvoiceCreateParams struct {
-	CompanyID string      `json:"company_id"`
-	Invoice   interface{} `json:"invoice"`
+	CompanyID string      `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	Invoice   interface{} `json:"invoice" jsonschema:"Invoice data object to create"`
 }
 
 // InvoiceGetParams defines parameters for getting a specific invoice
 type InvoiceGetParams struct {
-	CompanyID string `json:"company_id"`
-	InvoiceID string `json:"invoice_id"`
+	CompanyID string `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	InvoiceID string `json:"invoice_id" jsonschema:"Invoice UUID to retrieve"`
 }
 
 // InvoiceUpdateParams defines parameters for updating invoices
 type InvoiceUpdateParams struct {
-	CompanyID string      `json:"company_id"`
-	InvoiceID string      `json:"invoice_id"`
-	Invoice   interface{} `json:"invoice"`
+	CompanyID string      `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	InvoiceID string      `json:"invoice_id" jsonschema:"Invoice UUID to update"`
+	Invoice   interface{} `json:"invoice" jsonschema:"Invoice data object with updates"`
 }
 
 // InvoiceLineItemsListParams defines parameters for listing invoice line items
 type InvoiceLineItemsListParams struct {
-	CompanyID string `json:"company_id"`
-	InvoiceID string `json:"invoice_id"`
+	CompanyID string `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	InvoiceID string `json:"invoice_id" jsonschema:"Invoice UUID to get line items for"`
 }
 
 // InvoiceLineItemsCreateParams defines parameters for creating invoice line items
 type InvoiceLineItemsCreateParams struct {
-	CompanyID string      `json:"company_id"`
-	InvoiceID string      `json:"invoice_id"`
-	LineItem  interface{} `json:"line_item"`
+	CompanyID string      `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	InvoiceID string      `json:"invoice_id" jsonschema:"Invoice UUID to add line item to"`
+	LineItem  interface{} `json:"line_item" jsonschema:"Line item data object to create"`
 }
 
 // InvoiceResult defines the result structure for all invoice operations
@@ -63,755 +63,619 @@ type InvoiceResult struct {
 
 // RegisterInvoiceTools registers all invoice management tools using ONLY generated API clients
 func RegisterInvoiceTools(server *mcp.Server, client *bokio.AuthClient) error {
-	// Tool to list invoices with pagination and filtering
-	listInvoicesTool := mcp.NewServerTool[InvoiceListParams, InvoiceResult](
-		"bokio_invoices_list",
-		"List invoices for a company with optional pagination and filtering",
-		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[InvoiceListParams]) (*mcp.CallToolResultFor[InvoiceResult], error) {
-			// Get company ID from params or environment
-			companyIDStr := params.Arguments.CompanyID
-			if companyIDStr == "" {
-				companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
-			}
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "bokio_invoices_list",
+		Description: "List invoices for a company with optional pagination and filtering",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args InvoiceListParams) (*mcp.CallToolResult, InvoiceResult, error) {
+		companyIDStr := args.CompanyID
+		if companyIDStr == "" {
+			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
+		}
 
-			if companyIDStr == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
-						},
-					},
-				}, nil
-			}
-
-			// Parse company UUID
-			companyUUID, err := uuid.Parse(companyIDStr)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid company ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Create parameters for the generated client
-			genParams := &company.GetInvoiceParams{
-				Page:     params.Arguments.Page,
-				PageSize: params.Arguments.PageSize,
-				Query:    params.Arguments.Query,
-			}
-
-			// Call the generated client method
-			resp, err := client.CompanyClient.GetInvoice(ctx, companyUUID, genParams)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to list invoices: %v", err),
-						},
-					},
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Handle different response codes
-			if resp.StatusCode != http.StatusOK {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
-						},
-					},
-				}, nil
-			}
-
-			// Parse response body as generic interface
-			var responseData interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to decode response: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Return success with the actual API response
-			return &mcp.CallToolResultFor[InvoiceResult]{
+		if companyIDStr == "" {
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ Successfully retrieved invoices\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, nil
-		},
-		mcp.Input(
-			mcp.Property("company_id",
-				mcp.Description("Company UUID (or use BOKIO_COMPANY_ID env var)"),
-			),
-			mcp.Property("page",
-				mcp.Description("Page number (optional)"),
-			),
-			mcp.Property("page_size",
-				mcp.Description("Items per page (optional)"),
-			),
-			mcp.Property("query",
-				mcp.Description("Optional query to filter the data set (optional)"),
-			),
-		),
-	)
+			}, InvoiceResult{}, nil
+		}
 
-	// Tool to create a new invoice
-	createInvoiceTool := mcp.NewServerTool[InvoiceCreateParams, InvoiceResult](
-		"bokio_invoices_create",
-		"Create a new invoice for a company",
-		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[InvoiceCreateParams]) (*mcp.CallToolResultFor[InvoiceResult], error) {
-			// Check if client is in read-only mode
-			if client.GetConfig().ReadOnly {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Operation not allowed in read-only mode",
-						},
-					},
-				}, nil
-			}
-
-			// Get company ID from params or environment
-			companyIDStr := params.Arguments.CompanyID
-			if companyIDStr == "" {
-				companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
-			}
-
-			if companyIDStr == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
-						},
-					},
-				}, nil
-			}
-
-			// Parse company UUID
-			companyUUID, err := uuid.Parse(companyIDStr)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid company ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Convert invoice data to proper type
-			invoiceData, err := json.Marshal(params.Arguments.Invoice)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid invoice data: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			var invoiceBody company.PostInvoiceJSONRequestBody
-			if err := json.Unmarshal(invoiceData, &invoiceBody); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to parse invoice data: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Call the generated client method
-			resp, err := client.CompanyClient.PostInvoice(ctx, companyUUID, invoiceBody)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to create invoice: %v", err),
-						},
-					},
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Handle different response codes
-			if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
-						},
-					},
-				}, nil
-			}
-
-			// Parse response body as generic interface
-			var responseData interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to decode response: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Return success with the actual API response
-			return &mcp.CallToolResultFor[InvoiceResult]{
+		companyUUID, err := uuid.Parse(companyIDStr)
+		if err != nil {
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ Successfully created invoice\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, nil
-		},
-		mcp.Input(
-			mcp.Property("company_id",
-				mcp.Description("Company UUID (or use BOKIO_COMPANY_ID env var)"),
-			),
-			mcp.Property("invoice",
-				mcp.Description("Invoice data object to create"),
-				mcp.Required(true),
-			),
-		),
-	)
+			}, InvoiceResult{}, nil
+		}
 
-	// Tool to get a specific invoice by ID
-	getInvoiceTool := mcp.NewServerTool[InvoiceGetParams, InvoiceResult](
-		"bokio_invoices_get",
-		"Get a specific invoice by ID",
-		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[InvoiceGetParams]) (*mcp.CallToolResultFor[InvoiceResult], error) {
-			// Get company ID from params or environment
-			companyIDStr := params.Arguments.CompanyID
-			if companyIDStr == "" {
-				companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
-			}
+		genParams := &company.GetInvoiceParams{
+			Page:     args.Page,
+			PageSize: args.PageSize,
+			Query:    args.Query,
+		}
 
-			if companyIDStr == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
-						},
-					},
-				}, nil
-			}
-
-			if params.Arguments.InvoiceID == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Invoice ID is required",
-						},
-					},
-				}, nil
-			}
-
-			// Parse company UUID
-			companyUUID, err := uuid.Parse(companyIDStr)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid company ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Parse invoice UUID
-			invoiceUUID, err := uuid.Parse(params.Arguments.InvoiceID)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Call the generated client method
-			resp, err := client.CompanyClient.GetInvoicesInvoiceId(ctx, companyUUID, invoiceUUID)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to get invoice: %v", err),
-						},
-					},
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Handle different response codes
-			if resp.StatusCode != http.StatusOK {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
-						},
-					},
-				}, nil
-			}
-
-			// Parse response body as generic interface
-			var responseData interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to decode response: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Return success with the actual API response
-			return &mcp.CallToolResultFor[InvoiceResult]{
+		resp, err := client.CompanyClient.GetInvoice(ctx, companyUUID, genParams)
+		if err != nil {
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ Successfully retrieved invoice\n\nCompany: %s\nInvoice: %s\nStatus: %d\nResponse: %v", companyIDStr, params.Arguments.InvoiceID, resp.StatusCode, responseData),
+						Text: fmt.Sprintf("Failed to list invoices: %v", err),
 					},
 				},
-			}, nil
-		},
-		mcp.Input(
-			mcp.Property("company_id",
-				mcp.Description("Company UUID (or use BOKIO_COMPANY_ID env var)"),
-			),
-			mcp.Property("invoice_id",
-				mcp.Description("Invoice UUID to retrieve"),
-				mcp.Required(true),
-			),
-		),
-	)
+			}, InvoiceResult{}, nil
+		}
+		defer resp.Body.Close()
 
-	// Tool to update an invoice
-	updateInvoiceTool := mcp.NewServerTool[InvoiceUpdateParams, InvoiceResult](
-		"bokio_invoices_update",
-		"Update an existing invoice",
-		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[InvoiceUpdateParams]) (*mcp.CallToolResultFor[InvoiceResult], error) {
-			// Check if client is in read-only mode
-			if client.GetConfig().ReadOnly {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Operation not allowed in read-only mode",
-						},
-					},
-				}, nil
-			}
-
-			// Get company ID from params or environment
-			companyIDStr := params.Arguments.CompanyID
-			if companyIDStr == "" {
-				companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
-			}
-
-			if companyIDStr == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
-						},
-					},
-				}, nil
-			}
-
-			if params.Arguments.InvoiceID == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Invoice ID is required",
-						},
-					},
-				}, nil
-			}
-
-			// Parse company UUID
-			companyUUID, err := uuid.Parse(companyIDStr)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid company ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Parse invoice UUID
-			invoiceUUID, err := uuid.Parse(params.Arguments.InvoiceID)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Convert invoice data to proper type
-			invoiceData, err := json.Marshal(params.Arguments.Invoice)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid invoice data: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			var invoiceBody company.PutInvoiceJSONRequestBody
-			if err := json.Unmarshal(invoiceData, &invoiceBody); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to parse invoice data: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Call the generated client method
-			resp, err := client.CompanyClient.PutInvoice(ctx, companyUUID, invoiceUUID, invoiceBody)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to update invoice: %v", err),
-						},
-					},
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Handle different response codes
-			if resp.StatusCode != http.StatusOK {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
-						},
-					},
-				}, nil
-			}
-
-			// Parse response body as generic interface
-			var responseData interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to decode response: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Return success with the actual API response
-			return &mcp.CallToolResultFor[InvoiceResult]{
+		if resp.StatusCode != http.StatusOK {
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ Successfully updated invoice\n\nCompany: %s\nInvoice: %s\nStatus: %d\nResponse: %v", companyIDStr, params.Arguments.InvoiceID, resp.StatusCode, responseData),
+						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, nil
-		},
-		mcp.Input(
-			mcp.Property("company_id",
-				mcp.Description("Company UUID (or use BOKIO_COMPANY_ID env var)"),
-			),
-			mcp.Property("invoice_id",
-				mcp.Description("Invoice UUID to update"),
-				mcp.Required(true),
-			),
-			mcp.Property("invoice",
-				mcp.Description("Invoice data object with updates"),
-				mcp.Required(true),
-			),
-		),
-	)
+			}, InvoiceResult{}, nil
+		}
 
-	// Tool to list invoice line items (gets invoice details including line items)
-	listLineItemsTool := mcp.NewServerTool[InvoiceLineItemsListParams, InvoiceResult](
-		"bokio_invoices_line_items_list",
-		"List line items for a specific invoice (retrieves invoice details including line items)",
-		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[InvoiceLineItemsListParams]) (*mcp.CallToolResultFor[InvoiceResult], error) {
-			// Get company ID from params or environment
-			companyIDStr := params.Arguments.CompanyID
-			if companyIDStr == "" {
-				companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
-			}
-
-			if companyIDStr == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
-						},
-					},
-				}, nil
-			}
-
-			if params.Arguments.InvoiceID == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Invoice ID is required",
-						},
-					},
-				}, nil
-			}
-
-			// Parse company UUID
-			companyUUID, err := uuid.Parse(companyIDStr)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid company ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Parse invoice UUID
-			invoiceUUID, err := uuid.Parse(params.Arguments.InvoiceID)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Call the generated client method to get invoice details (including line items)
-			resp, err := client.CompanyClient.GetInvoicesInvoiceId(ctx, companyUUID, invoiceUUID)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to get invoice line items: %v", err),
-						},
-					},
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Handle different response codes
-			if resp.StatusCode != http.StatusOK {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
-						},
-					},
-				}, nil
-			}
-
-			// Parse response body as generic interface
-			var responseData interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to decode response: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Extract line items from the invoice response
-			var lineItems interface{}
-			if respMap, ok := responseData.(map[string]interface{}); ok {
-				if items, exists := respMap["lineItems"]; exists {
-					lineItems = items
-				}
-			}
-
-			// Return success with line items data
-			return &mcp.CallToolResultFor[InvoiceResult]{
+		var responseData interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ Successfully retrieved invoice line items\n\nCompany: %s\nInvoice: %s\nStatus: %d\nLine Items: %v", companyIDStr, params.Arguments.InvoiceID, resp.StatusCode, lineItems),
+						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, nil
-		},
-		mcp.Input(
-			mcp.Property("company_id",
-				mcp.Description("Company UUID (or use BOKIO_COMPANY_ID env var)"),
-			),
-			mcp.Property("invoice_id",
-				mcp.Description("Invoice UUID to get line items for"),
-				mcp.Required(true),
-			),
-		),
-	)
+			}, InvoiceResult{}, nil
+		}
 
-	// Tool to create a new invoice line item
-	createLineItemTool := mcp.NewServerTool[InvoiceLineItemsCreateParams, InvoiceResult](
-		"bokio_invoices_line_items_create",
-		"Create a new line item for an invoice",
-		func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[InvoiceLineItemsCreateParams]) (*mcp.CallToolResultFor[InvoiceResult], error) {
-			// Check if client is in read-only mode
-			if client.GetConfig().ReadOnly {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Operation not allowed in read-only mode",
-						},
-					},
-				}, nil
-			}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("✅ Successfully retrieved invoices\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+				},
+			},
+		}, InvoiceResult{}, nil
+	})
 
-			// Get company ID from params or environment
-			companyIDStr := params.Arguments.CompanyID
-			if companyIDStr == "" {
-				companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
-			}
-
-			if companyIDStr == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
-						},
-					},
-				}, nil
-			}
-
-			if params.Arguments.InvoiceID == "" {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: "Invoice ID is required",
-						},
-					},
-				}, nil
-			}
-
-			// Parse company UUID
-			companyUUID, err := uuid.Parse(companyIDStr)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid company ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Parse invoice UUID
-			invoiceUUID, err := uuid.Parse(params.Arguments.InvoiceID)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Convert line item data to proper type
-			lineItemData, err := json.Marshal(params.Arguments.LineItem)
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Invalid line item data: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			resp, err := client.CompanyClient.PostInvoiceLineItemWithBody(ctx, companyUUID, invoiceUUID, "application/json", bytes.NewReader(lineItemData))
-			if err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to create line item: %v", err),
-						},
-					},
-				}, nil
-			}
-			defer resp.Body.Close()
-
-			// Handle different response codes
-			if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
-						},
-					},
-				}, nil
-			}
-
-			// Parse response body as generic interface
-			var responseData interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-				return &mcp.CallToolResultFor[InvoiceResult]{
-					Content: []mcp.Content{
-						&mcp.TextContent{
-							Text: fmt.Sprintf("Failed to decode response: %v", err),
-						},
-					},
-				}, nil
-			}
-
-			// Return success with the actual API response
-			return &mcp.CallToolResultFor[InvoiceResult]{
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "bokio_invoices_create",
+		Description: "Create a new invoice for a company",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args InvoiceCreateParams) (*mcp.CallToolResult, InvoiceResult, error) {
+		if client.GetConfig().ReadOnly {
+			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: fmt.Sprintf("✅ Successfully created line item\n\nCompany: %s\nInvoice: %s\nStatus: %d\nResponse: %v", companyIDStr, params.Arguments.InvoiceID, resp.StatusCode, responseData),
+						Text: "Operation not allowed in read-only mode",
 					},
 				},
-			}, nil
-		},
-		mcp.Input(
-			mcp.Property("company_id",
-				mcp.Description("Company UUID (or use BOKIO_COMPANY_ID env var)"),
-			),
-			mcp.Property("invoice_id",
-				mcp.Description("Invoice UUID to add line item to"),
-				mcp.Required(true),
-			),
-			mcp.Property("line_item",
-				mcp.Description("Line item data object to create"),
-				mcp.Required(true),
-			),
-		),
-	)
+			}, InvoiceResult{}, nil
+		}
 
-	// Add all tools to the server
-	server.AddTools(
-		listInvoicesTool,
-		createInvoiceTool,
-		getInvoiceTool,
-		updateInvoiceTool,
-		listLineItemsTool,
-		createLineItemTool,
-	)
+		companyIDStr := args.CompanyID
+		if companyIDStr == "" {
+			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
+		}
+
+		if companyIDStr == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyUUID, err := uuid.Parse(companyIDStr)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid company ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		invoiceData, err := json.Marshal(args.Invoice)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid invoice data: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var invoiceBody company.PostInvoiceJSONRequestBody
+		if err := json.Unmarshal(invoiceData, &invoiceBody); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to parse invoice data: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		resp, err := client.CompanyClient.PostInvoice(ctx, companyUUID, invoiceBody)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to create invoice: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var responseData interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to decode response: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("✅ Successfully created invoice\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+				},
+			},
+		}, InvoiceResult{}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "bokio_invoices_get",
+		Description: "Get a specific invoice by ID",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args InvoiceGetParams) (*mcp.CallToolResult, InvoiceResult, error) {
+		companyIDStr := args.CompanyID
+		if companyIDStr == "" {
+			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
+		}
+
+		if companyIDStr == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		if args.InvoiceID == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invoice ID is required",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyUUID, err := uuid.Parse(companyIDStr)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid company ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		invoiceUUID, err := uuid.Parse(args.InvoiceID)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		resp, err := client.CompanyClient.GetInvoicesInvoiceId(ctx, companyUUID, invoiceUUID)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to get invoice: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var responseData interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to decode response: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("✅ Successfully retrieved invoice\n\nCompany: %s\nInvoice: %s\nStatus: %d\nResponse: %v", companyIDStr, args.InvoiceID, resp.StatusCode, responseData),
+				},
+			},
+		}, InvoiceResult{}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "bokio_invoices_update",
+		Description: "Update an existing invoice",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args InvoiceUpdateParams) (*mcp.CallToolResult, InvoiceResult, error) {
+		if client.GetConfig().ReadOnly {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Operation not allowed in read-only mode",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyIDStr := args.CompanyID
+		if companyIDStr == "" {
+			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
+		}
+
+		if companyIDStr == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		if args.InvoiceID == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invoice ID is required",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyUUID, err := uuid.Parse(companyIDStr)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid company ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		invoiceUUID, err := uuid.Parse(args.InvoiceID)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		invoiceData, err := json.Marshal(args.Invoice)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid invoice data: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var invoiceBody company.PutInvoiceJSONRequestBody
+		if err := json.Unmarshal(invoiceData, &invoiceBody); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to parse invoice data: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		resp, err := client.CompanyClient.PutInvoice(ctx, companyUUID, invoiceUUID, invoiceBody)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to update invoice: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var responseData interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to decode response: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("✅ Successfully updated invoice\n\nCompany: %s\nInvoice: %s\nStatus: %d\nResponse: %v", companyIDStr, args.InvoiceID, resp.StatusCode, responseData),
+				},
+			},
+		}, InvoiceResult{}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "bokio_invoices_line_items_list",
+		Description: "List line items for a specific invoice (retrieves invoice details including line items)",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args InvoiceLineItemsListParams) (*mcp.CallToolResult, InvoiceResult, error) {
+		companyIDStr := args.CompanyID
+		if companyIDStr == "" {
+			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
+		}
+
+		if companyIDStr == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		if args.InvoiceID == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invoice ID is required",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyUUID, err := uuid.Parse(companyIDStr)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid company ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		invoiceUUID, err := uuid.Parse(args.InvoiceID)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		resp, err := client.CompanyClient.GetInvoicesInvoiceId(ctx, companyUUID, invoiceUUID)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to get invoice line items: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var responseData interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to decode response: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var lineItems interface{}
+		if respMap, ok := responseData.(map[string]interface{}); ok {
+			if items, exists := respMap["lineItems"]; exists {
+				lineItems = items
+			}
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("✅ Successfully retrieved invoice line items\n\nCompany: %s\nInvoice: %s\nStatus: %d\nLine Items: %v", companyIDStr, args.InvoiceID, resp.StatusCode, lineItems),
+				},
+			},
+		}, InvoiceResult{}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "bokio_invoices_line_items_create",
+		Description: "Create a new line item for an invoice",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args InvoiceLineItemsCreateParams) (*mcp.CallToolResult, InvoiceResult, error) {
+		if client.GetConfig().ReadOnly {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Operation not allowed in read-only mode",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyIDStr := args.CompanyID
+		if companyIDStr == "" {
+			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
+		}
+
+		if companyIDStr == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		if args.InvoiceID == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invoice ID is required",
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		companyUUID, err := uuid.Parse(companyIDStr)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid company ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		invoiceUUID, err := uuid.Parse(args.InvoiceID)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid invoice ID format: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		lineItemData, err := json.Marshal(args.LineItem)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Invalid line item data: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		resp, err := client.CompanyClient.PostInvoiceLineItemWithBody(ctx, companyUUID, invoiceUUID, "application/json", bytes.NewReader(lineItemData))
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to create line item: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		var responseData interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Failed to decode response: %v", err),
+					},
+				},
+			}, InvoiceResult{}, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("✅ Successfully created line item\n\nCompany: %s\nInvoice: %s\nStatus: %d\nResponse: %v", companyIDStr, args.InvoiceID, resp.StatusCode, responseData),
+				},
+			},
+		}, InvoiceResult{}, nil
+	})
 
 	return nil
 }

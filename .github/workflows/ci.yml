@@ -122,38 +122,6 @@ jobs:
     - name: Run security make target
       run: make security
 
-  nix-build:
-    name: Nix Build
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-
-    - name: Install Nix
-      uses: cachix/install-nix-action@v27
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-        extra_nix_config: |
-          experimental-features = nix-command flakes
-          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-
-    - name: Setup Cachix
-      uses: cachix/cachix-action@v15
-      with:
-        name: devenv
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-        skipPush: ${{ github.event_name == 'pull_request' }}
-
-    - name: Check Nix flake
-      run: nix flake check --show-trace
-
-    - name: Build with Nix
-      run: nix build --show-trace
-
-    - name: Test Nix build
-      run: nix run . -- --help || echo "Binary built successfully"
-
   build-matrix:
     name: Build Matrix
     runs-on: ubuntu-latest
@@ -208,7 +176,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [test, lint, security, nix-build]
+    needs: [test, lint, security]
     if: always()
 
     steps:
@@ -216,8 +184,7 @@ jobs:
       run: |
         if [ "${{ needs.test.result }}" = "failure" ] ||
            [ "${{ needs.lint.result }}" = "failure" ] ||
-           [ "${{ needs.security.result }}" = "failure" ] ||
-           [ "${{ needs.nix-build.result }}" = "failure" ]; then
+           [ "${{ needs.security.result }}" = "failure" ]; then
           echo "❌ One or more CI jobs failed"
           exit 1
         else

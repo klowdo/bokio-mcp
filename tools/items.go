@@ -200,7 +200,8 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		var itemBody []byte
 
-		if args.ItemType == "salesItem" {
+		switch args.ItemType {
+		case "salesItem":
 			if args.UnitPrice == nil {
 				return &mcp.CallToolResult{
 					Content: []mcp.Content{
@@ -250,7 +251,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			}
 			itemBody = salesItemJSON
 
-		} else if args.ItemType == "descriptionOnlyItem" {
+		case "descriptionOnlyItem":
 			descItem := company.DescriptionOnlyItem{
 				Description: args.Description,
 				ItemType:    company.DescriptionOnlyItemItemTypeDescriptionOnlyItem,
@@ -268,7 +269,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			}
 			itemBody = descItemJSON
 
-		} else {
+		default:
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
@@ -496,7 +497,8 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		var itemBody []byte
 
-		if args.ItemType == "salesItem" {
+		switch args.ItemType {
+		case "salesItem":
 			if args.UnitPrice == nil {
 				return &mcp.CallToolResult{
 					Content: []mcp.Content{
@@ -547,7 +549,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			}
 			itemBody = salesItemJSON
 
-		} else if args.ItemType == "descriptionOnlyItem" {
+		case "descriptionOnlyItem":
 			descItem := company.DescriptionOnlyItem{
 				Description: args.Description,
 				Id:          &itemUUID,
@@ -566,7 +568,7 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			}
 			itemBody = descItemJSON
 
-		} else {
+		default:
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{

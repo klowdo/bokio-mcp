@@ -261,7 +261,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.AuthClient) error {
 			if params.Arguments.Email != nil || params.Arguments.Phone != nil {
 				contactDetails := []struct {
 					Email     *string             `json:"email,omitempty"`
-					Id        *openapi_types.UUID `json:"id"`
+					Id        *openapi_types.UUID `json:"id,omitempty"`
 					IsDefault *bool               `json:"isDefault,omitempty"`
 					Name      *string             `json:"name,omitempty"`
 					Phone     *string             `json:"phone,omitempty"`
@@ -556,7 +556,7 @@ func RegisterCustomerTools(server *mcp.Server, client *bokio.AuthClient) error {
 			if params.Arguments.Email != nil || params.Arguments.Phone != nil {
 				contactDetails := []struct {
 					Email     *string             `json:"email,omitempty"`
-					Id        *openapi_types.UUID `json:"id"`
+					Id        *openapi_types.UUID `json:"id,omitempty"`
 					IsDefault *bool               `json:"isDefault,omitempty"`
 					Name      *string             `json:"name,omitempty"`
 					Phone     *string             `json:"phone,omitempty"`

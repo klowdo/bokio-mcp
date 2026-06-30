@@ -23,7 +23,7 @@ jobs:
     steps:
     - name: Get PR information
       id: pr_info
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const { data: pr } = await github.rest.pulls.get({
@@ -107,7 +107,7 @@ jobs:
 
     - name: Wait for checks to complete
       if: steps.eligible.outputs.eligible == 'true'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const { data: checks } = await github.rest.checks.listForRef({
@@ -160,7 +160,7 @@ jobs:
 
     - name: Auto-approve PR
       if: steps.eligible.outputs.eligible == 'true'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           await github.rest.pulls.createReview({
@@ -173,7 +173,7 @@ jobs:
 
     - name: Enable auto-merge
       if: steps.eligible.outputs.eligible == 'true'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           await github.rest.pulls.update({
@@ -189,7 +189,7 @@ jobs:
 
     - name: Add comment
       if: steps.eligible.outputs.eligible == 'true'
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           await github.rest.issues.createComment({
@@ -207,7 +207,7 @@ jobs:
     steps:
     - name: Delete branch
       if: startsWith(github.head_ref, 'automated/') || startsWith(github.head_ref, 'dependabot/')
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           try {

@@ -91,10 +91,10 @@ endef
 # Tool Installation
 # =============================================================================
 
-install-tools: ## Install Go tools using Go 1.24 tool directives
+install-tools: ## Install Go tools using Go 1.26 tool directives
 	$(call print_status,"Installing Go tools from tool directives...")
-	@if ! go version | grep -q "go1\.24"; then \
-		$(call print_error,"Go 1.24 required for tool directives. Current: $$(go version)"); \
+	@if ! go version | grep -q "go1\.26"; then \
+		$(call print_error,"Go 1.26 required for tool directives. Current: $$(go version)"); \
 		exit 1; \
 	fi
 	@$(call print_status,"Installing oapi-codegen...")

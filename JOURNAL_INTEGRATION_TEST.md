@@ -8,8 +8,8 @@ This document explains how to use the journal integration test for the Bokio MCP
    - Client ID and Client Secret from the Bokio Developer Portal
    - Registered redirect URI (default: `http://localhost:8080/callback`)
 
-2. **Go 1.24+ Environment**
-   - The test uses Go 1.24 features and testify suite framework
+2. **Go 1.26+ Environment**
+   - The test uses Go 1.26 features and testify suite framework
 
 3. **Network Access**
    - The test connects to the real Bokio API at `https://api.bokio.se`
@@ -309,7 +309,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
-          go-version: "1.24"
+          go-version: "1.26"
       - name: Run Integration Tests
         env:
           BOKIO_CLIENT_ID: ${{ github.event.inputs.client_id }}

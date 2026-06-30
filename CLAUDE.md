@@ -8,7 +8,7 @@ The Bokio MCP Server is a Go-based Model Context Protocol server that provides A
 
 ### Key Technologies
 
-- **Go 1.24** with tool directives (uses `go tool` commands, NOT `go run`)
+- **Go 1.26** with tool directives (uses `go tool` commands, NOT `go run`)
 - **Model Context Protocol (MCP)** for AI assistant integration
 - **OAuth2** authentication with token management
 - **OpenAPI code generation** using oapi-codegen
@@ -35,7 +35,7 @@ bokio-mcp/
 ├── schemas/               # OpenAPI specifications (downloaded)
 ├── Makefile              # 25+ development automation targets
 ├── flake.nix             # Nix development environment
-├── go.mod                # Go 1.24 with tool directives
+├── go.mod                # Go 1.26 with tool directives
 └── .envrc                # direnv configuration
 ```
 
@@ -96,9 +96,9 @@ make security
 make pre-commit
 ```
 
-### Go 1.24 Tool Directives
+### Go 1.26 Tool Directives
 
-**CRITICAL**: This project uses Go 1.24's tool directive system. Always use `go tool` commands, never `go run`:
+**CRITICAL**: This project uses Go 1.26's tool directive system. Always use `go tool` commands, never `go run`:
 
 ```bash
 # ✅ Correct (automated via Makefile)
@@ -387,7 +387,7 @@ make release
 #### "go tool: command not found"
 
 - **Cause**: Using wrong Go version or tools not installed
-- **Solution**: Ensure Go 1.24 and use `nix develop` environment
+- **Solution**: Ensure Go 1.26 and use `nix develop` environment
 
 #### Generated files out of sync
 
@@ -492,7 +492,7 @@ When working on this project:
 3. **Test authentication flows** after API changes
 4. **Verify read-only mode** works for write operations
 5. **Update schemas separately** from code changes
-6. **Use Go 1.24 tool directives** - never `go run`
+6. **Use Go 1.26 tool directives** - never `go run`
 7. **Follow commit message conventions** for clear history
 8. **Run `make pre-commit`** before final commits
 

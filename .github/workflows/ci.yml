@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 env:
-  GO_VERSION_MATRIX: '["1.24"]'
+  GO_VERSION_MATRIX: '["1.26"]'
 
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: [1.24]
+        go-version: [1.26]
 
     steps:
     - name: Checkout code
@@ -52,7 +52,7 @@ jobs:
 
     # TODO: Re-enable when tests are added to the project
     # - name: Upload coverage to Codecov
-    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.24'
+    #   if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26'
     #   uses: codecov/codecov-action@v4
     #   with:
     #     file: ./coverage.out
@@ -72,7 +72,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.26'
         cache: true
         cache-dependency-path: go.sum
 
@@ -105,7 +105,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.26'
         cache: true
         cache-dependency-path: go.sum
 
@@ -183,7 +183,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: '1.26'
         cache: true
 
     - name: Install dependencies

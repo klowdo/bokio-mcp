@@ -47,7 +47,7 @@
       };
 
       buildInputs = with pkgs; [
-        go_1_24
+        go
         gotools
         gopls
         delve
@@ -89,7 +89,7 @@
 
         # Set up Go environment
         CGO_ENABLED = "1";
-        GOROOT = "${pkgs.go_1_24}/share/go";
+        GOROOT = "${pkgs.go}/share/go";
         GOPROXY = "https://proxy.golang.org,direct";
         GOSUMDB = "sum.golang.org";
       };
@@ -100,10 +100,9 @@
 
         src = ./.;
 
-        vendorHash = "sha256-5TdupBsoknikVrc4qShgDzZEuCaifHyG4PcC+WO7ng8=";
+        vendorHash = "sha256-1fzrMIbEwbXwAf+W3VmnBSa+ldruwEhi9mHIYY/U93k=";
 
-        # Build with Go 1.24
-        nativeBuildInputs = [ pkgs.go_1_24 ];
+        nativeBuildInputs = [ pkgs.go ];
 
         # Set build flags
         ldflags = [
@@ -114,7 +113,7 @@
 
         # Ensure we use the correct Go version
         preBuild = ''
-          export GOROOT="${pkgs.go_1_24}/share/go"
+          export GOROOT="${pkgs.go}/share/go"
         '';
 
         meta = with pkgs.lib; {

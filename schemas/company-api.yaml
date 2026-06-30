@@ -775,18 +775,6 @@ paths:
                     code: operation-not-allowed
                     message: Credit note with value b529df79-eb7f-5ef0-a8dc-c2b71f953554 cannot be deleted as it is not in draft status
                     bokioErrorId: 4d408943-7a1e-47ac-85a7-ac52b2c210d3
-        "404":
-          description: Credit note not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
-              examples:
-                CreditNoteNotFound:
-                  value:
-                    code: not-found
-                    message: The requested resource credit note with value b529df79-eb7f-5ef0-a8dc-c2b71f953554 was not found
-                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
   /companies/{companyId}/credit-notes/{creditNoteId}/publish:
     parameters:
       - name: companyId
@@ -1491,7 +1479,7 @@ paths:
         - invoices
       summary: Create an invoice
       description: |
-        Creates an new draft invoice for the company.
+        Creates a new draft invoice for the company.
 
         **Scope:** `invoices:write`
       operationId: post-invoice
@@ -1517,8 +1505,8 @@ paths:
                   contractReference: CONTRACT-456
                   currency: SEK
                   currencyRate: 1
-                  totalAmount: 200
-                  totalTax: 50
+                  totalAmount: 10000
+                  totalTax: 2500
                   paidAmount: 0
                   invoiceDate: 2024-10-10
                   dueDate: 2024-10-10
@@ -1530,8 +1518,18 @@ paths:
                       productType: goods
                       unitType: piece
                       quantity: 1
-                      unitPrice: 100
+                      unitPrice: 5000
                       taxRate: 25
+                    - description: Installation work
+                      itemType: salesItem
+                      productType: services
+                      unitType: hour
+                      quantity: 10
+                      unitPrice: 500
+                      taxRate: 25
+                      taxReduction:
+                        taxReductionType: rot
+                        jobType: rotConstruction
                     - description: A description line
                       itemType: descriptionOnlyItem
                   deliveryAddress:
@@ -1540,6 +1538,14 @@ paths:
                     city: Stockholm
                     postalCode: 111 11
                     country: SE
+                  taxReduction:
+                    type: rot
+                    description: Bathroom renovation
+                    propertyType: realEstate
+                    realEstateNumber: STOCKHOLM SÖDER 1:2
+                    deductionPeople:
+                      - personalNumber: 19850101-1234
+                        deductionAmount: 1500
                   metadata:
                     project: Website Redesign
                     department: IT
@@ -1571,8 +1577,8 @@ paths:
                     contractReference: CONTRACT-456
                     currency: SEK
                     currencyRate: 1
-                    totalAmount: 200
-                    totalTax: 50
+                    totalAmount: 10000
+                    totalTax: 2500
                     paidAmount: 0
                     status: draft
                     invoiceDate: 2024-10-10
@@ -1587,9 +1593,20 @@ paths:
                         productType: goods
                         unitType: piece
                         quantity: 1
-                        unitPrice: 100
+                        unitPrice: 5000
                         taxRate: 25
                       - id: 2
+                        description: Installation work
+                        itemType: salesItem
+                        productType: services
+                        unitType: hour
+                        quantity: 10
+                        unitPrice: 500
+                        taxRate: 25
+                        taxReduction:
+                          taxReductionType: rot
+                          jobType: rotConstruction
+                      - id: 3
                         description: A description line
                         itemType: descriptionOnlyItem
                     billingAddress:
@@ -1604,6 +1621,16 @@ paths:
                       city: Stockholm
                       postalCode: 111 11
                       country: SE
+                    taxReduction:
+                      type: rot
+                      description: Bathroom renovation
+                      propertyType: realEstate
+                      realEstateNumber: STOCKHOLM SÖDER 1:2
+                      deductionAmount: 1500
+                      status: draft
+                      deductionPeople:
+                        - personalNumber: 19850101-1234
+                          deductionAmount: 1500
                     attachmentRefs:
                       - id: 240a4af0-edfd-47b1-b4ab-f30450eaac19
                         fileName: myfile.pdf
@@ -1638,8 +1665,11 @@ paths:
       tags:
         - invoices
       summary: Get invoices
-      description: |-
+      description: |
         Get all invoices for the company. Use the query parameters to filter and navigate through the results.
+
+        **Tax reduction:** Personal numbers in `taxReduction.deductionPeople` have the last 4 digits masked when the invoice was created by a different integration. Masked values are returned as `YYYYMMDD-XXXX`.
+
         **Scope:** `invoices:read`
       operationId: get-invoice
       parameters:
@@ -1665,7 +1695,7 @@ paths:
           required: false
           description: |
             Optional query to filter the data set with supported fields listed below and [available operations](filtering).
-            View documentation for filtering on metatdata [here](metadata).
+            View documentation for filtering on metadata [here](metadata).
 
             | Field                | Type        |
             | -------------------- | ----------- |
@@ -1727,6 +1757,8 @@ paths:
       description: |
         Retrieve the information of the invoice with the matching invoiceId.
 
+        **Tax reduction:** Personal numbers in `taxReduction.deductionPeople` have the last 4 digits masked when the invoice was created by a different integration. Masked values are returned as `YYYYMMDD-XXXX`.
+
         **Scope:** `invoices:read`
       operationId: get-invoices-invoiceId
       responses:
@@ -1756,8 +1788,8 @@ paths:
                     contractReference: CONTRACT-456
                     currency: SEK
                     currencyRate: 1
-                    totalAmount: 200
-                    totalTax: 50
+                    totalAmount: 10000
+                    totalTax: 2500
                     paidAmount: 0
                     status: draft
                     invoiceDate: 2024-10-10
@@ -1771,9 +1803,20 @@ paths:
                         productType: goods
                         unitType: piece
                         quantity: 1
-                        unitPrice: 100
+                        unitPrice: 5000
                         taxRate: 25
                       - id: 2
+                        description: Installation work
+                        itemType: salesItem
+                        productType: services
+                        unitType: hour
+                        quantity: 10
+                        unitPrice: 500
+                        taxRate: 25
+                        taxReduction:
+                          taxReductionType: rot
+                          jobType: rotConstruction
+                      - id: 3
                         description: A description line
                         itemType: descriptionOnlyItem
                     billingAddress:
@@ -1788,6 +1831,16 @@ paths:
                       city: Stockholm
                       postalCode: 111 11
                       country: SE
+                    taxReduction:
+                      type: rot
+                      description: Bathroom renovation
+                      propertyType: realEstate
+                      realEstateNumber: STOCKHOLM SÖDER 1:2
+                      deductionAmount: 1500
+                      status: draft
+                      deductionPeople:
+                        - personalNumber: 19850101-1234
+                          deductionAmount: 1500
                     attachmentRefs:
                       - id: 240a4af0-edfd-47b1-b4ab-f30450eaac19
                         fileName: myfile.pdf
@@ -1827,6 +1880,8 @@ paths:
 
         **NOTE:** It's only possible to update invoices that are in draft status.
 
+        **Tax reduction:** Only the integration that created the invoice can modify tax reduction data. If a different integration includes `taxReduction` changes in the request, the changes will be silently ignored and the existing tax reduction data will be preserved.
+
         **Scope:** `invoices:write`
       operationId: put-invoice
       requestBody:
@@ -1852,8 +1907,8 @@ paths:
                   contractReference: CONTRACT-456
                   currency: SEK
                   currencyRate: 1
-                  totalAmount: 200
-                  totalTax: 50
+                  totalAmount: 10000
+                  totalTax: 2500
                   paidAmount: 0
                   invoiceDate: 2024-10-10
                   dueDate: 2024-10-10
@@ -1864,9 +1919,20 @@ paths:
                       productType: goods
                       unitType: piece
                       quantity: 1
-                      unitPrice: 100
+                      unitPrice: 5000
                       taxRate: 25
                     - id: 2
+                      description: Installation work
+                      itemType: salesItem
+                      productType: services
+                      unitType: hour
+                      quantity: 10
+                      unitPrice: 500
+                      taxRate: 25
+                      taxReduction:
+                        taxReductionType: rot
+                        jobType: rotConstruction
+                    - id: 3
                       itemRef:
                         id: e964435e-50ef-4524-a439-05ff87794952
                       description: A description line
@@ -1877,6 +1943,14 @@ paths:
                     city: Stockholm
                     postalCode: 111 11
                     country: SE
+                  taxReduction:
+                    type: rot
+                    description: Bathroom renovation
+                    propertyType: realEstate
+                    realEstateNumber: STOCKHOLM SÖDER 1:2
+                    deductionPeople:
+                      - personalNumber: 19850101-1234
+                        deductionAmount: 1500
                   metadata:
                     project: Website Redesign
                     department: IT
@@ -1909,8 +1983,8 @@ paths:
                     contractReference: CONTRACT-456
                     currency: SEK
                     currencyRate: 1
-                    totalAmount: 200
-                    totalTax: 50
+                    totalAmount: 10000
+                    totalTax: 2500
                     paidAmount: 0
                     invoiceDate: 2024-10-10
                     dueDate: 2024-10-10
@@ -1921,9 +1995,20 @@ paths:
                         productType: goods
                         unitType: piece
                         quantity: 1
-                        unitPrice: 100
+                        unitPrice: 5000
                         taxRate: 25
                       - id: 2
+                        description: Installation work
+                        itemType: salesItem
+                        productType: services
+                        unitType: hour
+                        quantity: 10
+                        unitPrice: 500
+                        taxRate: 25
+                        taxReduction:
+                          taxReductionType: rot
+                          jobType: rotConstruction
+                      - id: 3
                         itemRef:
                           id: e964435e-50ef-4524-a439-05ff87794952
                           description: A description line
@@ -1941,6 +2026,16 @@ paths:
                       city: Stockholm
                       postalCode: 111 11
                       country: SE
+                    taxReduction:
+                      type: rot
+                      description: Bathroom renovation
+                      propertyType: realEstate
+                      realEstateNumber: STOCKHOLM SÖDER 1:2
+                      deductionAmount: 1500
+                      status: draft
+                      deductionPeople:
+                        - personalNumber: 19850101-1234
+                          deductionAmount: 1500
                     attachmentRefs:
                       - id: 240a4af0-edfd-47b1-b4ab-f30450eaac19
                         fileName: myfile.pdf
@@ -1999,18 +2094,6 @@ paths:
                     code: operation-not-allowed
                     message: Invoice with value a419cf69-db6f-4de9-992c-b1a60942a443 cannot be deleted as it is not in draft status
                     bokioErrorId: 4d408943-7a1e-47ac-85a7-ac52b2c210d3
-        "404":
-          description: Invoice not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
-              examples:
-                InvoiceNotFound:
-                  value:
-                    code: not-found
-                    message: The requested resource invoice with value a419cf69-db6f-4de9-992c-b1a60942a443 was not found
-                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
   /companies/{companyId}/invoices/{invoiceId}/attachments:
     parameters:
       - name: companyId
@@ -2280,23 +2363,6 @@ paths:
       responses:
         "204":
           description: Attachment deleted from invoice
-        "404":
-          description: Attachment not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
-              examples:
-                AttachmentNotFound:
-                  value:
-                    code: not-found
-                    message: The requested resource attachment with value 240a4af0-edfd-47b1-b4ab-f30450eaac19 was not found
-                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
-                InvoiceNotFound:
-                  value:
-                    code: not-found
-                    message: The requested resource invoice with value a419cf69-db6f-4de9-992c-b1a60942a443 was not found
-                    bokioErrorId: 3b408943-7a1e-47ac-85a7-ac52b2c210d3
       security:
         - tokenAuth: []
         - access_token:
@@ -2848,12 +2914,6 @@ paths:
       responses:
         "204":
           description: Payment deleted successfully
-        "404":
-          description: Invoice or payment not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
       security:
         - tokenAuth: []
         - access_token:
@@ -3044,8 +3104,8 @@ paths:
                       phone: "+46701234567"
                     currency: SEK
                     currencyRate: 1
-                    totalAmount: 200
-                    totalTax: 50
+                    totalAmount: 10000
+                    totalTax: 2500
                     paidAmount: 0
                     invoiceDate: 2024-10-15
                     dueDate: 2024-11-15
@@ -3058,9 +3118,21 @@ paths:
                         description: Product 1
                         itemType: salesItem
                         productType: goods
-                        quantity: 2
-                        unitPrice: 100
+                        unitType: piece
+                        quantity: 1
+                        unitPrice: 5000
                         taxRate: 25
+                      - id: 2
+                        description: Installation work
+                        itemType: salesItem
+                        productType: services
+                        unitType: hour
+                        quantity: 10
+                        unitPrice: 500
+                        taxRate: 25
+                        taxReduction:
+                          taxReductionType: rot
+                          jobType: rotConstruction
                     billingAddress:
                       line1: Älvsborgsvägen 10
                       line2: null
@@ -3073,6 +3145,16 @@ paths:
                       city: Stockholm
                       postalCode: 111 11
                       country: SE
+                    taxReduction:
+                      type: rot
+                      description: Bathroom renovation
+                      propertyType: realEstate
+                      realEstateNumber: STOCKHOLM SÖDER 1:2
+                      deductionAmount: 1500
+                      status: draft
+                      deductionPeople:
+                        - personalNumber: 19850101-1234
+                          deductionAmount: 1500
                     attachmentRefs:
                       - id: 240a4af0-edfd-47b1-b4ab-f30450eaac19
                         fileName: myfile.pdf
@@ -3293,7 +3375,7 @@ paths:
         - invoices
       summary: Get an invoice settlement
       description: |
-        Retrieve the information of the specific settlement with the matching settlementd.
+        Retrieve the information of the specific settlement with the matching settlementId.
 
         **Scope:** `invoices:read`
       operationId: get-invoice-settlement
@@ -3341,23 +3423,6 @@ paths:
       responses:
         "204":
           description: Settlement deleted successfully
-        "404":
-          description: The requested resource was not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
-              examples:
-                InvoiceNotFound:
-                  value:
-                    code: not-found
-                    message: The requested resource invoice with value a419cf69-db6f-4de9-992c-b1a60942a443 was not found
-                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
-                SettlementNotFound:
-                  value:
-                    code: not-found
-                    message: The requested resource settlement with value c529df79-eb7f-5ef0-a8dc-c2b71f953554 was not found
-                    bokioErrorId: 8d408943-7a1e-47ac-85a7-ac52b2c210d3
   /companies/{companyId}/invoices/{invoiceId}/settlements/{settlementId}/record:
     parameters:
       - name: companyId
@@ -4577,18 +4642,6 @@ paths:
                     code: operation-not-allowed
                     message: Bokio API only supports deleting comments that have been added through the API by the same integration.
                     bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
-        "404":
-          description: Journal entry or comment not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
-              examples:
-                Error:
-                  value:
-                    code: not-found
-                    message: comment not found
-                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
       security:
         - tokenAuth: []
   /companies/{companyId}/sie/{fiscalYearId}/download:
@@ -4650,7 +4703,7 @@ paths:
         schema:
           type: string
           format: uuid
-        example: ea9ee4dd-fae3-4aec-a7db-6fc9cc1f8135
+        example: a9d8f1c2-6f34-4e4f-9d8a-2a4d3d5f7b91
     post:
       tags:
         - supplier-invoices
@@ -4665,29 +4718,31 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/supplierInvoice"
+              $ref: "#/components/schemas/supplierInvoiceCreate"
             examples:
               New supplier invoice:
                 value:
                   supplierRef:
-                    id: 12345678-abcd-1234-abcd-1234567890ab
+                    id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                   invoiceNumber: INV-001
                   invoiceDate: 2023-10-01
                   dueDate: 2023-10-15
                   totalAmount: 1000
+                  uploadRef:
+                    id: 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
       responses:
         "200":
           description: Supplier invoice created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/supplierInvoice"
+                $ref: "#/components/schemas/supplierInvoiceGet"
               examples:
                 Supplier invoice created:
                   value:
-                    id: 12345678-abcd-1234-abcd-1234567890ab
+                    id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                     supplierRef:
-                      id: 12345678-abcd-1234-abcd-1234567890ab
+                      id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                       name: Supplier AB
                     invoiceNumber: INV-001
                     invoiceDate: 2023-10-01
@@ -4697,9 +4752,9 @@ paths:
                     currency: SEK
                     currencyRate: 1
                     journalEntryRef:
-                      id: 22345678-abcd-1234-abcd-1234567890ab
+                      id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
         "400":
-          description: Missing required information
+          description: Validation or operation error
           content:
             application/json:
               schema:
@@ -4719,20 +4774,49 @@ paths:
                         message: The due date field is required
                       - field: "#/totalAmount"
                         message: The totalAmount field is required
+                Upload already connected:
+                  value:
+                    code: validation-error
+                    message: Validation failed with 1 error
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
+                    errors:
+                      - field: "#/uploadRef/id"
+                        message: Upload with id 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90 is already connected
+                Upload deleted:
+                  value:
+                    code: validation-error
+                    message: Validation failed with 1 error
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
+                    errors:
+                      - field: "#/uploadRef/id"
+                        message: Upload with id 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90 has been deleted
+        "404":
+          description: Supplier invoice or upload not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/apiError"
+              examples:
+                Upload not found:
+                  value:
+                    code: not-found
+                    message: No upload found with id 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
       security:
         - tokenAuth: []
     get:
       tags:
         - supplier-invoices
       summary: "[Preview] Get supplier invoices"
-      description: |-
+      description: |
         Get all supplier invoices for the company. Use the query parameters to filter and navigate through the results.
+
         **Scope:** `supplier-invoices:read`
       operationId: get-supplier-invoices
       parameters:
         - name: page
           in: query
-          description: Page number for pagination
+          description: Page number
           required: false
           schema:
             type: integer
@@ -4740,7 +4824,7 @@ paths:
             default: 1
         - name: pageSize
           in: query
-          description: Number of items per page for pagination
+          description: Number of items per page
           required: false
           schema:
             type: integer
@@ -4777,7 +4861,7 @@ paths:
                       items:
                         type: array
                         items:
-                          $ref: "#/components/schemas/supplierInvoice"
+                          $ref: "#/components/schemas/supplierInvoiceGet"
               examples:
                 Supplier invoices:
                   value:
@@ -4785,9 +4869,9 @@ paths:
                     totalPages: 1
                     currentPage: 1
                     items:
-                      - id: 12345678-abcd-1234-abcd-1234567890ab
+                      - id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                         supplierRef:
-                          id: 12345678-abcd-1234-abcd-1234567890ab
+                          id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                           name: Supplier AB
                         invoiceNumber: INV-001
                         invoiceDate: 2023-10-01
@@ -4797,10 +4881,12 @@ paths:
                         currency: SEK
                         currencyRate: 1
                         journalEntryRef:
-                          id: 22345678-abcd-1234-abcd-1234567890ab
-                      - id: 22345678-abcd-1234-abcd-1234567890ab
+                          id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
+                        uploadRefs:
+                          - id: 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
+                      - id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
                         supplierRef:
-                          id: 22345678-abcd-1234-abcd-1234567890ab
+                          id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
                           name: Consulting Nordic AB
                         invoiceNumber: INV-002
                         invoiceDate: 2023-10-05
@@ -4810,7 +4896,9 @@ paths:
                         currency: SEK
                         currencyRate: 1
                         journalEntryRef:
-                          id: 32345678-abcd-1234-abcd-1234567890ab
+                          id: 3c1a5e7b-9d2f-4b86-ae31-7f4c2d8b6a55
+                        uploadRefs:
+                          - id: 34e1c9a5-7b2d-4f86-8a31-6d2c5f9b7e40
       security:
         - tokenAuth: []
   /companies/{companyId}/supplier-invoices/{supplierInvoiceId}:
@@ -4822,7 +4910,7 @@ paths:
         schema:
           type: string
           format: uuid
-        example: ea9ee4dd-fae3-4aec-a7db-6fc9cc1f8135
+        example: a9d8f1c2-6f34-4e4f-9d8a-2a4d3d5f7b91
       - name: supplierInvoiceId
         in: path
         required: true
@@ -4830,11 +4918,11 @@ paths:
         schema:
           type: string
           format: uuid
-        example: 12345678-abcd-1234-abcd-1234567890ab
+        example: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
     get:
       tags:
         - supplier-invoices
-      summary: "[Preview] Get a supplier invoice by ID"
+      summary: "[Preview] Get a supplier invoice"
       description: |
         Retrieve the information of the supplier invoice with the matching supplierInvoiceId.
 
@@ -4846,13 +4934,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/supplierInvoice"
+                $ref: "#/components/schemas/supplierInvoiceGet"
               examples:
                 Supplier invoice example:
                   value:
-                    id: 12345678-abcd-1234-abcd-1234567890ab
+                    id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                     supplierRef:
-                      id: 12345678-abcd-1234-abcd-1234567890ab
+                      id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                       name: Supplier AB
                     invoiceNumber: INV-001
                     invoiceDate: 2023-10-01
@@ -4862,7 +4950,9 @@ paths:
                     currency: SEK
                     currencyRate: 1
                     journalEntryRef:
-                      id: 22345678-abcd-1234-abcd-1234567890ab
+                      id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
+                    uploadRefs:
+                      - id: 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
         "404":
           description: Supplier invoice not found
           content:
@@ -4870,7 +4960,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/apiError"
               examples:
-                Error:
+                Supplier invoice not found:
                   value:
                     code: not-found
                     message: Supplier invoice not found
@@ -4887,16 +4977,16 @@ paths:
         **Scope:** `supplier-invoices:write`
       operationId: put-supplier-invoice
       requestBody:
-        description: Post the necessary fields for the API to update the supplier invoice.
+        description: Post the necessary fields for the API to update a supplier invoice.
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/supplierInvoice"
+              $ref: "#/components/schemas/supplierInvoiceUpdate"
             examples:
               Updated supplier invoice:
                 value:
                   supplierRef:
-                    id: 12345678-abcd-1234-abcd-1234567890ab
+                    id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                   invoiceNumber: INV-001
                   invoiceDate: 2023-10-01
                   dueDate: 2023-10-15
@@ -4907,13 +4997,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/supplierInvoice"
+                $ref: "#/components/schemas/supplierInvoiceGet"
               examples:
                 Supplier invoice updated:
                   value:
-                    id: 12345678-abcd-1234-abcd-1234567890ab
+                    id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                     supplierRef:
-                      id: 12345678-abcd-1234-abcd-1234567890ab
+                      id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
                       name: Supplier AB
                     invoiceNumber: INV-001
                     invoiceDate: 2023-10-01
@@ -4923,7 +5013,7 @@ paths:
                     currency: SEK
                     currencyRate: 1
                     journalEntryRef:
-                      id: 22345678-abcd-1234-abcd-1234567890ab
+                      id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
         "400":
           description: Missing required information
           content:
@@ -4945,6 +5035,11 @@ paths:
                         message: The due date field is required
                       - field: "#/totalAmount"
                         message: The totalAmount field is required
+                Not created by integration:
+                  value:
+                    code: operation-not-allowed
+                    message: Bokio API only supports updating supplier invoices that have been added through the API by the same integration.
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
         "404":
           description: Supplier invoice not found
           content:
@@ -4983,17 +5078,96 @@ paths:
                     code: operation-not-allowed
                     message: Bokio API only supports deleting supplier invoices that have been added through the API by the same integration.
                     bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
-        "404":
-          description: Supplier invoice not found
+      security:
+        - tokenAuth: []
+  /companies/{companyId}/supplier-invoices/{supplierInvoiceId}/uploads:
+    parameters:
+      - name: companyId
+        in: path
+        required: true
+        description: Unique identifier of the company
+        schema:
+          type: string
+          format: uuid
+        example: a9d8f1c2-6f34-4e4f-9d8a-2a4d3d5f7b91
+      - name: supplierInvoiceId
+        in: path
+        required: true
+        description: Unique identifier of the supplier invoice
+        schema:
+          type: string
+          format: uuid
+        example: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
+    post:
+      tags:
+        - supplier-invoices
+      summary: "[Preview] Add an upload to a supplier invoice"
+      description: |
+        Add an upload to the supplier invoice.
+
+        **Scope:** `supplier-invoices:write`
+      operationId: post-supplier-invoice-upload
+      requestBody:
+        description: Post the necessary fields for the API to add an upload to the supplier invoice.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/uploadRef"
+            examples:
+              Existing upload:
+                value:
+                  id: 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
+      responses:
+        "200":
+          description: Upload added to supplier invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/uploadRef"
+              examples:
+                Upload:
+                  value:
+                    id: 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
+                Upload not found:
+                  value:
+                    code: not-found
+                    message: No upload found with id 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
+        "400":
+          description: Validation or operation error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/apiError"
               examples:
-                Error:
+                Validation error:
                   value:
-                    code: not-found
-                    message: Supplier invoice not found
+                    code: validation-error
+                    message: Missing required information
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
+                    errors:
+                      - field: "#/id"
+                        message: The upload id field is required
+                Upload already connected:
+                  value:
+                    code: validation-error
+                    message: Upload is already connected
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
+                    errors:
+                      - field: "#/id"
+                        message: Upload with id 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90 is already connected
+                Upload deleted:
+                  value:
+                    code: validation-error
+                    message: Upload has been deleted
+                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
+                    errors:
+                      - field: "#/id"
+                        message: Upload with id 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90 has been deleted
+                Not created by integration:
+                  value:
+                    code: operation-not-allowed
+                    message: Bokio API only supports adding uploads to supplier invoices that have been added through the API by the same integration.
                     bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
       security:
         - tokenAuth: []
@@ -6029,18 +6203,6 @@ paths:
                         - Premium
                       isAvailableInTrial: true
                       isInTrial: false
-        "404":
-          description: Tag or tag group not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/apiError"
-              examples:
-                Error:
-                  value:
-                    code: not-found
-                    message: Tag not found
-                    bokioErrorId: 9b408943-7a1e-47ac-85a7-ac52b2c210d3
       security:
         - tokenAuth: []
   /companies/{companyId}/uploads:
@@ -6620,6 +6782,52 @@ components:
           city: Göteborg
           postalCode: 123 45
           country: SE
+    lineItemTaxReduction:
+      type: object
+      nullable: true
+      title: lineItemTaxReduction
+      description: |
+        Tax reduction details for a line item. Only applicable to line items with productType `services` and unitType `hour` or `unspecified`.
+      required:
+        - taxReductionType
+        - jobType
+      properties:
+        taxReductionType:
+          type: string
+          enum:
+            - rot
+            - rut
+          description: The tax reduction type for this line item. Must match the invoice-level taxReduction type.
+        jobType:
+          type: string
+          enum:
+            - rotConstruction
+            - rotElectricity
+            - rotGlassPlate
+            - rotSoilWork
+            - rotSweeping
+            - rotPainting
+            - rotPlumbing
+            - rutChildServices
+            - rutDataITServices
+            - rutRemovalServices
+            - rutClothingCare
+            - rutPersonalHelpCare
+            - rutRepair
+            - rutSnow
+            - rutCleaning
+            - rutGardening
+            - rutWaterWashingOfTextiles
+            - rutFurnishing
+            - rutTransportOfHouseholdGoods
+            - rutHousingSupervision
+          description: |
+            The job type categorizing the work. The prefix must match the tax reduction type:
+            - ROT types: rotConstruction, rotElectricity, rotGlassPlate, rotSoilWork, rotSweeping, rotPainting, rotPlumbing
+            - RUT types: rutChildServices, rutDataITServices, rutRemovalServices, rutClothingCare, rutPersonalHelpCare, rutRepair, rutSnow, rutCleaning, rutGardening, rutWaterWashingOfTextiles, rutFurnishing, rutTransportOfHouseholdGoods, rutHousingSupervision
+      example:
+        taxReductionType: rot
+        jobType: rotConstruction
     salesInvoiceItem:
       type: object
       title: salesItem
@@ -6705,19 +6913,28 @@ components:
           nullable: true
           format: int32
           description: Use the `bookkeepingAccountNumber` field in the line items to specify an accounting account other than the account that would be automatically be selected based on the item productType, taxRate, customer and company settings. Accounts that would be automatically selected cannot be set on this field.
+        taxReduction:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/lineItemTaxReduction"
+          description: tax reduction categorization for this line item. When the invoice has a taxReduction, each service line item should specify its job type. The type must match the invoice-level taxReduction type.
       example:
         id: 1
         itemRef:
           id: 55c899c5-82b2-47fa-9c51-e35fc9b26443
-          description: Product 1
-        description: Product 1
+          description: Installation work
+        description: Installation work
         itemType: salesItem
-        productType: goods
-        unitType: piece
-        quantity: 1
-        unitPrice: 100
+        productType: services
+        unitType: hour
+        quantity: 10
+        unitPrice: 500
         taxRate: 25
         bookkeepingAccountNumber: 3389
+        taxReduction:
+          taxReductionType: rot
+          jobType: rotConstruction
     descriptionOnlyInvoiceItem:
       type: object
       title: descriptionOnlyItem
@@ -7138,6 +7355,102 @@ components:
         endDate: 2023-12-31
         accountingMethod: accrual
         status: open
+    invoiceTaxReductionDeductionPerson:
+      type: object
+      title: invoiceTaxReductionDeductionPerson
+      required:
+        - personalNumber
+        - deductionAmount
+      properties:
+        personalNumber:
+          type: string
+          pattern: ^\d{8}-\d{4}$
+          description: |
+            Swedish personal number in format YYYYMMDD-XXXX.
+
+            When the invoice was created by a different integration, the value is fully masked and returned as `YYYYMMDD-XXXX`.
+        deductionAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: The deduction amount for this person. Must be zero or greater.
+      example:
+        personalNumber: 19850101-1234
+        deductionAmount: 1500
+    invoiceTaxReduction:
+      type: object
+      nullable: true
+      title: invoiceTaxReduction
+      description: |
+        Tax reduction details for the invoice.
+
+        **Ownership restriction:** Only the integration that created the invoice can manage tax reduction data. Other integrations can read tax reduction data, but personal numbers will be masked (see `personalNumber`).
+      required:
+        - type
+        - description
+        - deductionPeople
+      properties:
+        type:
+          type: string
+          enum:
+            - rot
+            - rut
+          description: The tax reduction type.
+        description:
+          type: string
+          description: Description of the tax reduction work performed.
+        propertyType:
+          type: string
+          nullable: true
+          enum:
+            - realEstate
+            - housingDesignation
+          description: Required when type is `rot`. The type of property where the work is performed.
+        realEstateNumber:
+          type: string
+          nullable: true
+          description: Required when propertyType is `realEstate`. The real estate designation number.
+        tenantOrgNumber:
+          type: string
+          nullable: true
+          description: Required when propertyType is `housingDesignation`. The organisational number of the housing association (BRF).
+        apartmentNumber:
+          type: string
+          nullable: true
+          description: Required when propertyType is `housingDesignation`. The apartment number within the housing association.
+        deductionAmount:
+          type: number
+          format: double
+          readOnly: true
+          description: The total deduction amount calculated from all deduction people.
+        status:
+          type: string
+          readOnly: true
+          enum:
+            - draft
+            - awaitingPayment
+            - readyToSubmit
+            - submitted
+            - removed
+            - completed
+          description: The current status of the tax reduction.
+        deductionPeople:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/invoiceTaxReductionDeductionPerson"
+          description: The people eligible for the tax deduction. At least one person is required.
+      example:
+        type: rot
+        description: Bathroom renovation
+        propertyType: housingDesignation
+        tenantOrgNumber: "7164009068"
+        apartmentNumber: "1001"
+        deductionAmount: 1500
+        status: draft
+        deductionPeople:
+          - personalNumber: 19850101-1234
+            deductionAmount: 1500
     invoice:
       type: object
       title: invoice
@@ -7264,6 +7577,11 @@ components:
         deliveryAddress:
           oneOf:
             - $ref: "#/components/schemas/address"
+        taxReduction:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/invoiceTaxReduction"
         attachmentRefs:
           type: array
           readOnly: true
@@ -7327,8 +7645,8 @@ components:
         contractReference: CONTRACT-456
         currency: SEK
         currencyRate: 1
-        totalAmount: 200
-        totalTax: 50
+        totalAmount: 10000
+        totalTax: 2500
         paidAmount: 0
         status: draft
         invoiceDate: 2024-10-10
@@ -7343,9 +7661,20 @@ components:
             productType: goods
             unitType: piece
             quantity: 1
-            unitPrice: 100
+            unitPrice: 5000
             taxRate: 25
           - id: 2
+            description: Installation work
+            itemType: salesItem
+            productType: services
+            unitType: hour
+            quantity: 10
+            unitPrice: 500
+            taxRate: 25
+            taxReduction:
+              taxReductionType: rot
+              jobType: rotConstruction
+          - id: 3
             itemRef:
               id: e964435e-50ef-4524-a439-05ff87794952
               description: A description line
@@ -7363,6 +7692,16 @@ components:
           city: Stockholm
           postalCode: 111 11
           country: SE
+        taxReduction:
+          type: rot
+          description: Bathroom renovation
+          propertyType: realEstate
+          realEstateNumber: STOCKHOLM SÖDER 1:2
+          deductionAmount: 1500
+          status: draft
+          deductionPeople:
+            - personalNumber: 19850101-1234
+              deductionAmount: 1500
         attachmentRefs:
           - id: 240a4af0-edfd-47b1-b4ab-f30450eaac19
             fileName: myfile.pdf
@@ -7439,6 +7778,7 @@ components:
           id: 55c899c5-82b2-4a09-899e-9dc03342b5dc
     standardSettlementDetails:
       type: object
+      additionalProperties: false
       required:
         - date
         - sumBaseCurrency
@@ -7449,7 +7789,6 @@ components:
           description: The date of the settlement
         sumBaseCurrency:
           type: number
-          format: decimal
           description: The settlement amount in base currency
       example:
         date: 2024-10-15
@@ -7467,7 +7806,6 @@ components:
           description: The date of the settlement
         sumBaseCurrency:
           type: number
-          format: decimal
           description: The settlement amount in base currency. Must be greater than zero.
         vatScheme:
           type: string
@@ -7926,7 +8264,17 @@ components:
           example: "Synced from external system. Invoice reference: INV-2024-001."
       required:
         - content
-    supplierInvoice:
+    uploadRef:
+      type: object
+      title: UploadRef
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of an existing upload
+      example:
+        id: 240a4af0-edfd-47b1-b4ab-f30450eaac19
+    supplierInvoiceGet:
       type: object
       title: SupplierInvoice
       required:
@@ -7981,10 +8329,14 @@ components:
               type: string
               format: uuid
               readOnly: true
+        uploadRefs:
+          type: array
+          items:
+            $ref: "#/components/schemas/uploadRef"
       example:
-        id: 12345678-abcd-1234-abcd-1234567890ab
+        id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
         supplierRef:
-          id: 12345678-abcd-1234-abcd-1234567890ab
+          id: 6f6b2f17-3c4a-4a69-9f2d-3f5d7e1b8c90
           name: Supplier AB
         invoiceNumber: INV-001
         invoiceDate: 2023-10-01
@@ -7994,7 +8346,68 @@ components:
         currency: SEK
         currencyRate: 1
         journalEntryRef:
-          id: 22345678-abcd-1234-abcd-1234567890ab
+          id: 2d8ce6b4-1f3a-46a5-8a9d-5b7f2c4e9d10
+        uploadRefs:
+          - id: 24f3b7c1-8d6a-4e2f-9b31-5d7c2a8e4f90
+          - id: 34e1c9a5-7b2d-4f86-8a31-6d2c5f9b7e40
+    supplierInvoiceCreate:
+      type: object
+      title: SupplierInvoiceCreate
+      required:
+        - invoiceDate
+        - dueDate
+        - totalAmount
+        - supplierRef
+      properties:
+        supplierRef:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+        invoiceNumber:
+          type: string
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        totalAmount:
+          type: number
+          format: double
+        uploadRef:
+          $ref: "#/components/schemas/uploadRef"
+    supplierInvoiceUpdate:
+      type: object
+      title: SupplierInvoiceUpdate
+      required:
+        - invoiceDate
+        - dueDate
+        - totalAmount
+        - supplierRef
+      properties:
+        supplierRef:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+        invoiceNumber:
+          type: string
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        totalAmount:
+          type: number
+          format: double
     tagValue:
       type: object
       title: tagValue

@@ -100,7 +100,7 @@
 
         src = ./.;
 
-        vendorHash = "sha256-1fzrMIbEwbXwAf+W3VmnBSa+ldruwEhi9mHIYY/U93k=";
+        vendorHash = "sha256-dOdOh45H0FXI9yFL2100SC89cvYgZHX3HQoI9pj20LY=";
 
         nativeBuildInputs = [ pkgs.go ];
 

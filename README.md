@@ -314,7 +314,7 @@ In read-only mode, all write operations (`create_*`, `update_*`, `delete_*`) are
 
 ### Prerequisites
 
-- Go 1.23+
+- Go 1.26+
 - Make
 - Git
 

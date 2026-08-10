@@ -33,7 +33,7 @@ func NewAuthClient(config *Config) (*AuthClient, error) {
 	}
 
 	if config.BaseURL == "" {
-		config.BaseURL = "https://api.bokio.se"
+		config.BaseURL = "https://api.bokio.se/v1"
 	}
 
 	// Create authenticated HTTP client
@@ -63,7 +63,7 @@ func NewAuthClient(config *Config) (*AuthClient, error) {
 func LoadConfigFromEnv() *Config {
 	return &Config{
 		IntegrationToken: os.Getenv("BOKIO_INTEGRATION_TOKEN"),
-		BaseURL:          getEnvWithDefault("BOKIO_BASE_URL", "https://api.bokio.se"),
+		BaseURL:          getEnvWithDefault("BOKIO_BASE_URL", "https://api.bokio.se/v1"),
 		ReadOnly:         os.Getenv("BOKIO_READ_ONLY") == "true",
 	}
 }

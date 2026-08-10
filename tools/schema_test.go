@@ -13,7 +13,7 @@ import (
 func TestToolSchemasAreObjects(t *testing.T) {
 	client, err := bokio.NewAuthClient(&bokio.Config{
 		IntegrationToken: "test-token",
-		BaseURL:          "https://api.bokio.se",
+		BaseURL:          "https://api.bokio.se/v1",
 	})
 	require.NoError(t, err)
 

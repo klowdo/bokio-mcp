@@ -37,18 +37,18 @@ func TestConfig(t *testing.T) {
 			readOnly: "false",
 			want: &Config{
 				IntegrationToken: "test-token-456",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 		},
 		{
 			name:     "empty token",
 			token:    "",
-			baseURL:  "https://api.bokio.se",
+			baseURL:  "https://api.bokio.se/v1",
 			readOnly: "false",
 			want: &Config{
 				IntegrationToken: "",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 		},
@@ -89,7 +89,7 @@ func TestNewAuthClient(t *testing.T) {
 			name: "valid config",
 			config: &Config{
 				IntegrationToken: "test-token-123",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 			wantErr: false,
@@ -98,7 +98,7 @@ func TestNewAuthClient(t *testing.T) {
 			name: "empty token",
 			config: &Config{
 				IntegrationToken: "",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 			wantErr: true,
@@ -137,7 +137,7 @@ func TestNewAuthClient(t *testing.T) {
 			// Verify default base URL is set when empty
 			expectedBaseURL := tt.config.BaseURL
 			if expectedBaseURL == "" {
-				expectedBaseURL = "https://api.bokio.se"
+				expectedBaseURL = "https://api.bokio.se/v1"
 			}
 			assert.Equal(t, expectedBaseURL, client.GetBaseURL())
 
@@ -305,7 +305,7 @@ func TestConfigValidation(t *testing.T) {
 			name: "whitespace token",
 			config: &Config{
 				IntegrationToken: "   ",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 			},
 			valid: true, // Current implementation doesn't trim, so whitespace is valid
 		},
@@ -313,7 +313,7 @@ func TestConfigValidation(t *testing.T) {
 			name: "very long token",
 			config: &Config{
 				IntegrationToken: string(make([]byte, 1000)), // Very long token
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 			},
 			valid: true, // Should be valid even if very long
 		},

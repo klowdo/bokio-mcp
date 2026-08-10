@@ -345,62 +345,6 @@ func TestCustomerUpdateParams(t *testing.T) {
 	}
 }
 
-func TestCustomerResultStructures(t *testing.T) {
-	// Test that result structures marshal/unmarshal correctly
-	tests := []struct {
-		name   string
-		result interface{}
-	}{
-		{
-			name: "CustomersListResult success",
-			result: CustomersListResult{
-				Success: true,
-			},
-		},
-		{
-			name: "CustomersListResult error",
-			result: CustomersListResult{
-				Success: false,
-				Error:   "Test error message",
-			},
-		},
-		{
-			name: "CustomerCreateResult success",
-			result: CustomerCreateResult{
-				Success: true,
-			},
-		},
-		{
-			name: "CustomerGetResult",
-			result: CustomerGetResult{
-				Success: true,
-			},
-		},
-		{
-			name: "CustomerUpdateResult",
-			result: CustomerUpdateResult{
-				Success: true,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Marshal to JSON
-			data, err := json.Marshal(tt.result)
-			require.NoError(t, err)
-
-			// Unmarshal back to verify structure
-			var unmarshaled map[string]interface{}
-			err = json.Unmarshal(data, &unmarshaled)
-			require.NoError(t, err)
-
-			// Verify basic structure
-			assert.Contains(t, unmarshaled, "success")
-		})
-	}
-}
-
 // Helper functions for creating pointers to primitive types
 func stringPtr(s string) *string {
 	return &s

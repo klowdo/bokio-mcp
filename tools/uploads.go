@@ -27,9 +27,8 @@ type UploadListParams struct {
 
 // UploadListResult defines the result for listing uploads
 type UploadListResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // UploadCreateParams defines parameters for creating an upload
@@ -44,9 +43,8 @@ type UploadCreateParams struct {
 
 // UploadCreateResult defines the result for creating an upload
 type UploadCreateResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // UploadGetParams defines parameters for getting an upload
@@ -57,9 +55,8 @@ type UploadGetParams struct {
 
 // UploadGetResult defines the result for getting an upload
 type UploadGetResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // UploadDownloadParams defines parameters for downloading an upload

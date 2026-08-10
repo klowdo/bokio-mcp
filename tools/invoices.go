@@ -24,8 +24,8 @@ type InvoiceListParams struct {
 
 // InvoiceCreateParams defines parameters for creating invoices
 type InvoiceCreateParams struct {
-	CompanyID string      `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
-	Invoice   interface{} `json:"invoice" jsonschema:"Invoice data object to create"`
+	CompanyID string         `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	Invoice   map[string]any `json:"invoice" jsonschema:"Invoice data object to create"`
 }
 
 // InvoiceGetParams defines parameters for getting a specific invoice
@@ -36,9 +36,9 @@ type InvoiceGetParams struct {
 
 // InvoiceUpdateParams defines parameters for updating invoices
 type InvoiceUpdateParams struct {
-	CompanyID string      `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
-	InvoiceID string      `json:"invoice_id" jsonschema:"Invoice UUID to update"`
-	Invoice   interface{} `json:"invoice" jsonschema:"Invoice data object with updates"`
+	CompanyID string         `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	InvoiceID string         `json:"invoice_id" jsonschema:"Invoice UUID to update"`
+	Invoice   map[string]any `json:"invoice" jsonschema:"Invoice data object with updates"`
 }
 
 // InvoiceLineItemsListParams defines parameters for listing invoice line items
@@ -49,16 +49,15 @@ type InvoiceLineItemsListParams struct {
 
 // InvoiceLineItemsCreateParams defines parameters for creating invoice line items
 type InvoiceLineItemsCreateParams struct {
-	CompanyID string      `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
-	InvoiceID string      `json:"invoice_id" jsonschema:"Invoice UUID to add line item to"`
-	LineItem  interface{} `json:"line_item" jsonschema:"Line item data object to create"`
+	CompanyID string         `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
+	InvoiceID string         `json:"invoice_id" jsonschema:"Invoice UUID to add line item to"`
+	LineItem  map[string]any `json:"line_item" jsonschema:"Line item data object to create"`
 }
 
 // InvoiceResult defines the result structure for all invoice operations
 type InvoiceResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // RegisterInvoiceTools registers all invoice management tools using ONLY generated API clients

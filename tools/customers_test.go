@@ -355,7 +355,6 @@ func TestCustomerResultStructures(t *testing.T) {
 			name: "CustomersListResult success",
 			result: CustomersListResult{
 				Success: true,
-				Data:    map[string]string{"test": "data"},
 			},
 		},
 		{
@@ -369,21 +368,18 @@ func TestCustomerResultStructures(t *testing.T) {
 			name: "CustomerCreateResult success",
 			result: CustomerCreateResult{
 				Success: true,
-				Data:    map[string]interface{}{"id": "cust-123", "name": "Test Customer"},
 			},
 		},
 		{
 			name: "CustomerGetResult",
 			result: CustomerGetResult{
 				Success: true,
-				Data:    map[string]string{"customer_id": "cust-123"},
 			},
 		},
 		{
 			name: "CustomerUpdateResult",
 			result: CustomerUpdateResult{
 				Success: true,
-				Data:    "Updated successfully",
 			},
 		},
 	}

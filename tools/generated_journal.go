@@ -22,9 +22,8 @@ type GeneratedJournalParams struct {
 
 // GeneratedJournalResult defines the result using generated clients only
 type GeneratedJournalResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // RegisterGeneratedJournalTools registers journal tools using ONLY generated API clients

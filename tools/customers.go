@@ -24,9 +24,8 @@ type CustomersListParams struct {
 
 // CustomersListResult defines the result for listing customers
 type CustomersListResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // CustomerCreateParams defines parameters for creating a customer
@@ -43,9 +42,8 @@ type CustomerCreateParams struct {
 
 // CustomerCreateResult defines the result for creating a customer
 type CustomerCreateResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // CustomerGetParams defines parameters for getting a customer
@@ -56,9 +54,8 @@ type CustomerGetParams struct {
 
 // CustomerGetResult defines the result for getting a customer
 type CustomerGetResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // CustomerUpdateParams defines parameters for updating a customer
@@ -76,9 +73,8 @@ type CustomerUpdateParams struct {
 
 // CustomerUpdateResult defines the result for updating a customer
 type CustomerUpdateResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // RegisterCustomerTools registers customer-related MCP tools using generated API clients

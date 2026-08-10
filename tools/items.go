@@ -53,9 +53,8 @@ type ItemUpdateParams struct {
 
 // ItemResult defines the result structure for item operations
 type ItemResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // RegisterItemTools registers item management tools using ONLY generated API clients

@@ -47,7 +47,7 @@ func (m *MockBokioServer) GetLastAuthHeader() string {
 func TestConfig(opts ...ConfigOption) *bokio.Config {
 	config := &bokio.Config{
 		IntegrationToken: "test-integration-token",
-		BaseURL:          "https://api.bokio.se",
+		BaseURL:          "https://api.bokio.se/v1",
 		ReadOnly:         false,
 	}
 

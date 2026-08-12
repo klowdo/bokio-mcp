@@ -80,7 +80,7 @@ func TestTestConfig(t *testing.T) {
 			opts: []ConfigOption{},
 			want: map[string]interface{}{
 				"token":     "test-integration-token",
-				"base_url":  "https://api.bokio.se",
+				"base_url":  "https://api.bokio.se/v1",
 				"read_only": false,
 			},
 		},
@@ -89,7 +89,7 @@ func TestTestConfig(t *testing.T) {
 			opts: []ConfigOption{WithToken("custom-token-123")},
 			want: map[string]interface{}{
 				"token":     "custom-token-123",
-				"base_url":  "https://api.bokio.se",
+				"base_url":  "https://api.bokio.se/v1",
 				"read_only": false,
 			},
 		},
@@ -107,7 +107,7 @@ func TestTestConfig(t *testing.T) {
 			opts: []ConfigOption{WithReadOnly(true)},
 			want: map[string]interface{}{
 				"token":     "test-integration-token",
-				"base_url":  "https://api.bokio.se",
+				"base_url":  "https://api.bokio.se/v1",
 				"read_only": true,
 			},
 		},

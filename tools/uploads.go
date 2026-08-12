@@ -25,13 +25,6 @@ type UploadListParams struct {
 	PageSize  *int32 `json:"page_size,omitempty" jsonschema:"Items per page (optional)"`
 }
 
-// UploadListResult defines the result for listing uploads
-type UploadListResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
-
 // UploadCreateParams defines parameters for creating an upload
 type UploadCreateParams struct {
 	CompanyID      string  `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
@@ -42,24 +35,10 @@ type UploadCreateParams struct {
 	JournalEntryID *string `json:"journal_entry_id,omitempty" jsonschema:"Journal entry UUID to attach the upload to (optional)"`
 }
 
-// UploadCreateResult defines the result for creating an upload
-type UploadCreateResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
-
 // UploadGetParams defines parameters for getting an upload
 type UploadGetParams struct {
 	CompanyID string `json:"company_id" jsonschema:"Company UUID (or use BOKIO_COMPANY_ID env var)"`
 	UploadID  string `json:"upload_id" jsonschema:"Upload UUID"`
-}
-
-// UploadGetResult defines the result for getting an upload
-type UploadGetResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
 }
 
 // UploadDownloadParams defines parameters for downloading an upload
@@ -68,21 +47,12 @@ type UploadDownloadParams struct {
 	UploadID  string `json:"upload_id" jsonschema:"Upload UUID"`
 }
 
-// UploadDownloadResult defines the result for downloading an upload
-type UploadDownloadResult struct {
-	Success     bool   `json:"success"`
-	FileContent string `json:"file_content,omitempty"` // Base64 encoded file content
-	ContentType string `json:"content_type,omitempty"`
-	FileName    string `json:"file_name,omitempty"`
-	Error       string `json:"error,omitempty"`
-}
-
 // RegisterUploadTools registers upload tools using ONLY generated API clients
 func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_uploads_list",
 		Description: "List uploads for a company with optional pagination",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadListParams) (*mcp.CallToolResult, UploadListResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadListParams) (*mcp.CallToolResult, any, error) {
 		companyIDStr := args.CompanyID
 		if companyIDStr == "" {
 			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
@@ -90,23 +60,25 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, UploadListResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, UploadListResult{}, nil
+			}, nil, nil
 		}
 
 		genParams := &company.GetUploadsParams{
@@ -117,57 +89,61 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 		resp, err := client.CompanyClient.GetUploads(ctx, companyUUID, genParams)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to list uploads: %v", err),
 					},
 				},
-			}, UploadListResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, UploadListResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, UploadListResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully retrieved uploads list\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully retrieved uploads list\n\nCompany: %s\nStatus: %d\nResponse: %s", companyIDStr, resp.StatusCode, responseData),
 				},
 			},
-		}, UploadListResult{}, nil
+		}, nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_uploads_create",
 		Description: "Upload a file to Bokio",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadCreateParams) (*mcp.CallToolResult, UploadCreateResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadCreateParams) (*mcp.CallToolResult, any, error) {
 		if client.GetConfig().ReadOnly {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Upload creation not allowed in read-only mode",
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		companyIDStr := args.CompanyID
@@ -177,64 +153,70 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		if args.FileContent == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "file_content is required (base64 encoded file)",
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		if args.FileName == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "file_name is required",
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		if args.ContentType == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "content_type is required",
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		fileData, err := base64.StdEncoding.DecodeString(args.FileContent)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid base64 file content: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		var journalEntryUUID *openapi_types.UUID
@@ -242,12 +224,13 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 			journalUUID, err := uuid.Parse(*args.JournalEntryID)
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Invalid journal entry ID format: %v", err),
 						},
 					},
-				}, UploadCreateResult{}, nil
+				}, nil, nil
 			}
 			journalEntryUUID = &journalUUID
 		}
@@ -258,34 +241,37 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 		fileWriter, err := writer.CreateFormFile("file", args.FileName)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to create form file: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 		_, err = fileWriter.Write(fileData)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to write file data: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		if args.Description != nil {
 			err = writer.WriteField("description", *args.Description)
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Failed to write description field: %v", err),
 						},
 					},
-				}, UploadCreateResult{}, nil
+				}, nil, nil
 			}
 		}
 
@@ -293,24 +279,26 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 			err = writer.WriteField("journalEntryId", journalEntryUUID.String())
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Failed to write journal entry ID field: %v", err),
 						},
 					},
-				}, UploadCreateResult{}, nil
+				}, nil, nil
 			}
 		}
 
 		err = writer.Close()
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to close multipart writer: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		genParams := &company.AddUploadParams{}
@@ -318,49 +306,52 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 		resp, err := client.CompanyClient.AddUploadWithBody(ctx, companyUUID, genParams, writer.FormDataContentType(), &buf)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to upload file: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, UploadCreateResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully uploaded file\n\nCompany: %s\nFile: %s\nStatus: %d\nResponse: %v", companyIDStr, args.FileName, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully uploaded file\n\nCompany: %s\nFile: %s\nStatus: %d\nResponse: %s", companyIDStr, args.FileName, resp.StatusCode, responseData),
 				},
 			},
-		}, UploadCreateResult{}, nil
+		}, nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_uploads_get",
 		Description: "Get upload information by ID",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadGetParams) (*mcp.CallToolResult, UploadGetResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadGetParams) (*mcp.CallToolResult, any, error) {
 		companyIDStr := args.CompanyID
 		if companyIDStr == "" {
 			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
@@ -368,92 +359,99 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 
 		if args.UploadID == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "upload_id is required",
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 
 		uploadUUID, err := uuid.Parse(args.UploadID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid upload ID format: %v", err),
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 
 		resp, err := client.CompanyClient.GetUpload(ctx, companyUUID, uploadUUID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to get upload: %v", err),
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, UploadGetResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully retrieved upload information\n\nCompany: %s\nUpload ID: %s\nStatus: %d\nResponse: %v", companyIDStr, args.UploadID, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully retrieved upload information\n\nCompany: %s\nUpload ID: %s\nStatus: %d\nResponse: %s", companyIDStr, args.UploadID, resp.StatusCode, responseData),
 				},
 			},
-		}, UploadGetResult{}, nil
+		}, nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_uploads_download",
 		Description: "Download an uploaded file",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadDownloadParams) (*mcp.CallToolResult, UploadDownloadResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args UploadDownloadParams) (*mcp.CallToolResult, any, error) {
 		companyIDStr := args.CompanyID
 		if companyIDStr == "" {
 			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
@@ -461,77 +459,84 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 
 		if args.UploadID == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "upload_id is required",
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 
 		uploadUUID, err := uuid.Parse(args.UploadID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid upload ID format: %v", err),
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 
 		resp, err := client.CompanyClient.DownloadUpload(ctx, companyUUID, uploadUUID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to download upload: %v", err),
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 
 		fileContent, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to read file content: %v", err),
 					},
 				},
-			}, UploadDownloadResult{}, nil
+			}, nil, nil
 		}
 
 		contentType := resp.Header.Get("Content-Type")
@@ -548,7 +553,7 @@ func RegisterUploadTools(server *mcp.Server, client *bokio.AuthClient) error {
 					Text: fmt.Sprintf("✅ Successfully downloaded file\n\nCompany: %s\nUpload ID: %s\nContent-Type: %s\nFile Name: %s\nFile Size: %d bytes\nStatus: %d\n\nBase64 Content: %s", companyIDStr, args.UploadID, contentType, fileName, len(fileContent), resp.StatusCode, base64Content),
 				},
 			},
-		}, UploadDownloadResult{}, nil
+		}, nil, nil
 	})
 
 	return nil

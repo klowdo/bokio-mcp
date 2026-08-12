@@ -51,19 +51,12 @@ type ItemUpdateParams struct {
 	UnitType    *string  `json:"unit_type,omitempty" jsonschema:"Unit type: 'piece', 'hour', 'meter', etc. (for salesItem, defaults to 'piece')"`
 }
 
-// ItemResult defines the result structure for item operations
-type ItemResult struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
-
 // RegisterItemTools registers item management tools using ONLY generated API clients
 func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_items_list",
 		Description: "List inventory items for a company with optional pagination and filtering",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemListParams) (*mcp.CallToolResult, ItemResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemListParams) (*mcp.CallToolResult, any, error) {
 		companyIDStr := args.CompanyID
 		if companyIDStr == "" {
 			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
@@ -71,23 +64,25 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		genParams := &company.GetItemsParams{
@@ -99,57 +94,61 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 		resp, err := client.CompanyClient.GetItems(ctx, companyUUID, genParams)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to list items: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully retrieved items\n\nCompany: %s\nStatus: %d\nResponse: %v", companyIDStr, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully retrieved items\n\nCompany: %s\nStatus: %d\nResponse: %s", companyIDStr, resp.StatusCode, responseData),
 				},
 			},
-		}, ItemResult{}, nil
+		}, nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_items_create",
 		Description: "Create a new inventory item (salesItem or descriptionOnlyItem)",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemCreateParams) (*mcp.CallToolResult, ItemResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemCreateParams) (*mcp.CallToolResult, any, error) {
 		if client.GetConfig().ReadOnly {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Create operation not allowed in read-only mode",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		companyIDStr := args.CompanyID
@@ -159,43 +158,47 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		if args.ItemType == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "item_type is required (salesItem or descriptionOnlyItem)",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		if args.Description == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "description is required",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		var itemBody []byte
@@ -204,21 +207,23 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 		case "salesItem":
 			if args.UnitPrice == nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: "unit_price is required for salesItem",
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 			if args.TaxRate == nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: "tax_rate is required for salesItem",
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 
 			productType := "goods"
@@ -242,12 +247,13 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			salesItemJSON, err := json.Marshal(salesItem)
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Failed to marshal salesItem: %v", err),
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 			itemBody = salesItemJSON
 
@@ -260,71 +266,76 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			descItemJSON, err := json.Marshal(descItem)
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Failed to marshal descriptionOnlyItem: %v", err),
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 			itemBody = descItemJSON
 
 		default:
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "item_type must be either 'salesItem' or 'descriptionOnlyItem'",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		resp, err := client.CompanyClient.PostItemWithBody(ctx, companyUUID, "application/json", bytes.NewReader(itemBody))
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to create item: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully created item\n\nCompany: %s\nItem Type: %s\nDescription: %s\nStatus: %d\nResponse: %v", companyIDStr, args.ItemType, args.Description, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully created item\n\nCompany: %s\nItem Type: %s\nDescription: %s\nStatus: %d\nResponse: %s", companyIDStr, args.ItemType, args.Description, resp.StatusCode, responseData),
 				},
 			},
-		}, ItemResult{}, nil
+		}, nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_items_get",
 		Description: "Get a specific inventory item by ID",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemGetParams) (*mcp.CallToolResult, ItemResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemGetParams) (*mcp.CallToolResult, any, error) {
 		companyIDStr := args.CompanyID
 		if companyIDStr == "" {
 			companyIDStr = os.Getenv("BOKIO_COMPANY_ID")
@@ -332,100 +343,108 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		if args.ItemID == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "item_id is required",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		itemUUID, err := uuid.Parse(args.ItemID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid item ID format: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		resp, err := client.CompanyClient.GetItemsItemId(ctx, companyUUID, itemUUID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to get item: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully retrieved item\n\nCompany: %s\nItem ID: %s\nStatus: %d\nResponse: %v", companyIDStr, args.ItemID, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully retrieved item\n\nCompany: %s\nItem ID: %s\nStatus: %d\nResponse: %s", companyIDStr, args.ItemID, resp.StatusCode, responseData),
 				},
 			},
-		}, ItemResult{}, nil
+		}, nil, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "bokio_items_update",
 		Description: "Update an existing inventory item",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemUpdateParams) (*mcp.CallToolResult, ItemResult, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, args ItemUpdateParams) (*mcp.CallToolResult, any, error) {
 		if client.GetConfig().ReadOnly {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Update operation not allowed in read-only mode",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		companyIDStr := args.CompanyID
@@ -435,64 +454,70 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 
 		if companyIDStr == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		if args.ItemID == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "item_id is required",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		companyUUID, err := uuid.Parse(companyIDStr)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid company ID format: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		itemUUID, err := uuid.Parse(args.ItemID)
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Invalid item ID format: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		if args.ItemType == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "item_type is required (salesItem or descriptionOnlyItem)",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		if args.Description == "" {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "description is required",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		var itemBody []byte
@@ -501,21 +526,23 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 		case "salesItem":
 			if args.UnitPrice == nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: "unit_price is required for salesItem",
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 			if args.TaxRate == nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: "tax_rate is required for salesItem",
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 
 			productType := "goods"
@@ -540,12 +567,13 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			salesItemJSON, err := json.Marshal(salesItem)
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Failed to marshal salesItem: %v", err),
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 			itemBody = salesItemJSON
 
@@ -559,65 +587,70 @@ func RegisterItemTools(server *mcp.Server, client *bokio.AuthClient) error {
 			descItemJSON, err := json.Marshal(descItem)
 			if err != nil {
 				return &mcp.CallToolResult{
+					IsError: true,
 					Content: []mcp.Content{
 						&mcp.TextContent{
 							Text: fmt.Sprintf("Failed to marshal descriptionOnlyItem: %v", err),
 						},
 					},
-				}, ItemResult{}, nil
+				}, nil, nil
 			}
 			itemBody = descItemJSON
 
 		default:
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: "item_type must be either 'salesItem' or 'descriptionOnlyItem'",
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		resp, err := client.CompanyClient.PutItemWithBody(ctx, companyUUID, itemUUID, "application/json", bytes.NewReader(itemBody))
 		if err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to update item: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("API returned status %d", resp.StatusCode),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
-		var responseData interface{}
+		var responseData json.RawMessage
 		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
 			return &mcp.CallToolResult{
+				IsError: true,
 				Content: []mcp.Content{
 					&mcp.TextContent{
 						Text: fmt.Sprintf("Failed to decode response: %v", err),
 					},
 				},
-			}, ItemResult{}, nil
+			}, nil, nil
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("✅ Successfully updated item\n\nCompany: %s\nItem ID: %s\nItem Type: %s\nDescription: %s\nStatus: %d\nResponse: %v", companyIDStr, args.ItemID, args.ItemType, args.Description, resp.StatusCode, responseData),
+					Text: fmt.Sprintf("✅ Successfully updated item\n\nCompany: %s\nItem ID: %s\nItem Type: %s\nDescription: %s\nStatus: %d\nResponse: %s", companyIDStr, args.ItemID, args.ItemType, args.Description, resp.StatusCode, responseData),
 				},
 			},
-		}, ItemResult{}, nil
+		}, nil, nil
 	})
 
 	return nil

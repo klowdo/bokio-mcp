@@ -30,7 +30,7 @@ func TestReadOnlyMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &bokio.Config{
 				IntegrationToken: "test-token",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         tt.readOnly,
 			}
 
@@ -48,7 +48,7 @@ func TestReadOnlyModeValidation(t *testing.T) {
 	// Mock read-only client
 	config := &bokio.Config{
 		IntegrationToken: "test-token",
-		BaseURL:          "https://api.bokio.se",
+		BaseURL:          "https://api.bokio.se/v1",
 		ReadOnly:         true,
 	}
 
@@ -64,7 +64,7 @@ func TestReadOnlyModeValidation(t *testing.T) {
 	// Test with non-read-only client
 	normalConfig := &bokio.Config{
 		IntegrationToken: "test-token",
-		BaseURL:          "https://api.bokio.se",
+		BaseURL:          "https://api.bokio.se/v1",
 		ReadOnly:         false,
 	}
 
@@ -131,7 +131,7 @@ func TestReadOnlyModeConfiguration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &bokio.Config{
 				IntegrationToken: "test-token",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         tt.configValue,
 			}
 
@@ -185,7 +185,7 @@ func TestReadOnlyModeParameterStructures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &bokio.Config{
 				IntegrationToken: "test-token",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         true, // Always test with read-only enabled
 			}
 
@@ -233,7 +233,7 @@ func shouldAllowOperation(client *bokio.AuthClient, operationType string) bool {
 func TestShouldAllowOperation(t *testing.T) {
 	config := &bokio.Config{
 		IntegrationToken: "test-token",
-		BaseURL:          "https://api.bokio.se",
+		BaseURL:          "https://api.bokio.se/v1",
 		ReadOnly:         true,
 	}
 
@@ -267,7 +267,7 @@ func TestShouldAllowOperation(t *testing.T) {
 	// Test with non-read-only client
 	normalConfig := &bokio.Config{
 		IntegrationToken: "test-token",
-		BaseURL:          "https://api.bokio.se",
+		BaseURL:          "https://api.bokio.se/v1",
 		ReadOnly:         false,
 	}
 

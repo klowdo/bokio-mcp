@@ -37,8 +37,8 @@ func TestLoadConfig(t *testing.T) {
 			expectError: false,
 			expected: &bokio.Config{
 				IntegrationToken: "test-integration-token-456",
-				BaseURL:          "https://api.bokio.se", // default
-				ReadOnly:         false,                  // default
+				BaseURL:          "https://api.bokio.se/v1", // default
+				ReadOnly:         false,                     // default
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestLoadConfig(t *testing.T) {
 			expectError: false,
 			expected: &bokio.Config{
 				IntegrationToken: "test-token",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 		},
@@ -122,7 +122,7 @@ func TestLoadConfigFromEnvironment(t *testing.T) {
 			},
 			expected: &bokio.Config{
 				IntegrationToken: "",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 		},
@@ -147,7 +147,7 @@ func TestLoadConfigFromEnvironment(t *testing.T) {
 			},
 			expected: &bokio.Config{
 				IntegrationToken: "readonly-token",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         true,
 			},
 		},
@@ -249,7 +249,7 @@ func TestConfigValidationLogic(t *testing.T) {
 			name: "valid config should pass validation",
 			configOverride: &bokio.Config{
 				IntegrationToken: "valid-token-123",
-				BaseURL:          "https://api.bokio.se",
+				BaseURL:          "https://api.bokio.se/v1",
 				ReadOnly:         false,
 			},
 			expectError: false,
@@ -307,8 +307,8 @@ func TestEnvironmentVariablesPrecedence(t *testing.T) {
 
 		config := bokio.LoadConfigFromEnv()
 		assert.Equal(t, "", config.IntegrationToken)
-		assert.Equal(t, "https://api.bokio.se", config.BaseURL) // Default
-		assert.Equal(t, false, config.ReadOnly)                 // Default
+		assert.Equal(t, "https://api.bokio.se/v1", config.BaseURL) // Default
+		assert.Equal(t, false, config.ReadOnly)                    // Default
 	})
 
 	// Test override of defaults

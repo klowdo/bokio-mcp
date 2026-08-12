@@ -77,7 +77,7 @@ export BOKIO_CLIENT_ID="your_client_id"
 export BOKIO_CLIENT_SECRET="your_client_secret"
 
 # Optional - API configuration
-export BOKIO_BASE_URL="https://api.bokio.se"      # Default
+export BOKIO_BASE_URL="https://api.bokio.se/v1"      # Default
 export BOKIO_REDIRECT_URL="http://localhost:8080/callback"  # Default
 
 # Optional - Security

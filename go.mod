@@ -7,7 +7,7 @@ toolchain go1.26.6
 require (
 	github.com/google/uuid v1.6.0
 	github.com/modelcontextprotocol/go-sdk v1.4.1
-	github.com/oapi-codegen/runtime v1.4.2
+	github.com/oapi-codegen/runtime v1.7.0
 	github.com/stretchr/testify v1.11.1
 )
 

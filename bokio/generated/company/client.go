@@ -305,6 +305,22 @@ type ClientInterface interface {
 
 	PutJournalentryTags(ctx context.Context, companyId openapi_types.UUID, journalEntryId openapi_types.UUID, body PutJournalentryTagsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListProjects request
+	ListProjects(ctx context.Context, companyId openapi_types.UUID, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostProjectWithBody request with any body
+	PostProjectWithBody(ctx context.Context, companyId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostProject(ctx context.Context, companyId openapi_types.UUID, body PostProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetProjectById request
+	GetProjectById(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutProjectWithBody request with any body
+	PutProjectWithBody(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PutProject(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, body PutProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DownloadSieFile request
 	DownloadSieFile(ctx context.Context, companyId openapi_types.UUID, fiscalYearId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -326,6 +342,11 @@ type ClientInterface interface {
 	PutSupplierInvoiceWithBody(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PutSupplierInvoice(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PutSupplierInvoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostSupplierInvoiceRowWithBody request with any body
+	PostSupplierInvoiceRowWithBody(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostSupplierInvoiceRow(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PostSupplierInvoiceRowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostSupplierInvoiceUploadWithBody request with any body
 	PostSupplierInvoiceUploadWithBody(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1320,6 +1341,78 @@ func (c *Client) PutJournalentryTags(ctx context.Context, companyId openapi_type
 	return c.Client.Do(req)
 }
 
+func (c *Client) ListProjects(ctx context.Context, companyId openapi_types.UUID, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectsRequest(c.Server, companyId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostProjectWithBody(ctx context.Context, companyId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostProjectRequestWithBody(c.Server, companyId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostProject(ctx context.Context, companyId openapi_types.UUID, body PostProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostProjectRequest(c.Server, companyId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetProjectById(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProjectByIdRequest(c.Server, companyId, projectId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutProjectWithBody(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutProjectRequestWithBody(c.Server, companyId, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PutProject(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, body PutProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutProjectRequest(c.Server, companyId, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) DownloadSieFile(ctx context.Context, companyId openapi_types.UUID, fiscalYearId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDownloadSieFileRequest(c.Server, companyId, fiscalYearId)
 	if err != nil {
@@ -1406,6 +1499,30 @@ func (c *Client) PutSupplierInvoiceWithBody(ctx context.Context, companyId opena
 
 func (c *Client) PutSupplierInvoice(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PutSupplierInvoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutSupplierInvoiceRequest(c.Server, companyId, supplierInvoiceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSupplierInvoiceRowWithBody(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSupplierInvoiceRowRequestWithBody(c.Server, companyId, supplierInvoiceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSupplierInvoiceRow(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PostSupplierInvoiceRowJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSupplierInvoiceRowRequest(c.Server, companyId, supplierInvoiceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4968,6 +5085,233 @@ func NewPutJournalentryTagsRequestWithBody(server string, companyId openapi_type
 	return req, nil
 }
 
+// NewListProjectsRequest generates requests for ListProjects
+func NewListProjectsRequest(server string, companyId openapi_types.UUID, params *ListProjectsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "companyId", companyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/companies/%s/projects", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "page", *params.Page, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PageSize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pageSize", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Query != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "query", *params.Query, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPostProjectRequest calls the generic PostProject builder with application/json body
+func NewPostProjectRequest(server string, companyId openapi_types.UUID, body PostProjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostProjectRequestWithBody(server, companyId, "application/json", bodyReader)
+}
+
+// NewPostProjectRequestWithBody generates requests for PostProject with any type of body
+func NewPostProjectRequestWithBody(server string, companyId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "companyId", companyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/companies/%s/projects", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetProjectByIdRequest generates requests for GetProjectById
+func NewGetProjectByIdRequest(server string, companyId openapi_types.UUID, projectId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "companyId", companyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/companies/%s/projects/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutProjectRequest calls the generic PutProject builder with application/json body
+func NewPutProjectRequest(server string, companyId openapi_types.UUID, projectId openapi_types.UUID, body PutProjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutProjectRequestWithBody(server, companyId, projectId, "application/json", bodyReader)
+}
+
+// NewPutProjectRequestWithBody generates requests for PutProject with any type of body
+func NewPutProjectRequestWithBody(server string, companyId openapi_types.UUID, projectId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "companyId", companyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/companies/%s/projects/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewDownloadSieFileRequest generates requests for DownloadSieFile
 func NewDownloadSieFileRequest(server string, companyId openapi_types.UUID, fiscalYearId openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -5268,6 +5612,60 @@ func NewPutSupplierInvoiceRequestWithBody(server string, companyId openapi_types
 	}
 
 	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostSupplierInvoiceRowRequest calls the generic PostSupplierInvoiceRow builder with application/json body
+func NewPostSupplierInvoiceRowRequest(server string, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PostSupplierInvoiceRowJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostSupplierInvoiceRowRequestWithBody(server, companyId, supplierInvoiceId, "application/json", bodyReader)
+}
+
+// NewPostSupplierInvoiceRowRequestWithBody generates requests for PostSupplierInvoiceRow with any type of body
+func NewPostSupplierInvoiceRowRequestWithBody(server string, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "companyId", companyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "supplierInvoiceId", supplierInvoiceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/companies/%s/supplier-invoices/%s/rows", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -6504,6 +6902,22 @@ type ClientWithResponsesInterface interface {
 
 	PutJournalentryTagsWithResponse(ctx context.Context, companyId openapi_types.UUID, journalEntryId openapi_types.UUID, body PutJournalentryTagsJSONRequestBody, reqEditors ...RequestEditorFn) (*PutJournalentryTagsResponse, error)
 
+	// ListProjectsWithResponse request
+	ListProjectsWithResponse(ctx context.Context, companyId openapi_types.UUID, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
+
+	// PostProjectWithBodyWithResponse request with any body
+	PostProjectWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostProjectResponse, error)
+
+	PostProjectWithResponse(ctx context.Context, companyId openapi_types.UUID, body PostProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PostProjectResponse, error)
+
+	// GetProjectByIdWithResponse request
+	GetProjectByIdWithResponse(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetProjectByIdResponse, error)
+
+	// PutProjectWithBodyWithResponse request with any body
+	PutProjectWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutProjectResponse, error)
+
+	PutProjectWithResponse(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, body PutProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutProjectResponse, error)
+
 	// DownloadSieFileWithResponse request
 	DownloadSieFileWithResponse(ctx context.Context, companyId openapi_types.UUID, fiscalYearId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DownloadSieFileResponse, error)
 
@@ -6525,6 +6939,11 @@ type ClientWithResponsesInterface interface {
 	PutSupplierInvoiceWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutSupplierInvoiceResponse, error)
 
 	PutSupplierInvoiceWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PutSupplierInvoiceJSONRequestBody, reqEditors ...RequestEditorFn) (*PutSupplierInvoiceResponse, error)
+
+	// PostSupplierInvoiceRowWithBodyWithResponse request with any body
+	PostSupplierInvoiceRowWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostSupplierInvoiceRowResponse, error)
+
+	PostSupplierInvoiceRowWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PostSupplierInvoiceRowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostSupplierInvoiceRowResponse, error)
 
 	// PostSupplierInvoiceUploadWithBodyWithResponse request with any body
 	PostSupplierInvoiceUploadWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostSupplierInvoiceUploadResponse, error)
@@ -8537,6 +8956,139 @@ func (r PutJournalentryTagsResponse) ContentType() string {
 	return ""
 }
 
+type ListProjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		CurrentPage *int32     `json:"currentPage,omitempty"`
+		Items       *[]Project `json:"items,omitempty"`
+		TotalItems  *int32     `json:"totalItems,omitempty"`
+		TotalPages  *int32     `json:"totalPages,omitempty"`
+	}
+	JSON403 *ApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProjectsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Project
+	JSON400      *ApiError
+	JSON403      *ApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r PostProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetProjectByIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Project
+	JSON403      *ApiError
+	JSON404      *ApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetProjectByIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetProjectByIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProjectByIdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutProjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Project
+	JSON400      *ApiError
+	JSON403      *ApiError
+	JSON404      *ApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r PutProjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutProjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DownloadSieFileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8721,6 +9273,38 @@ func (r PutSupplierInvoiceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PutSupplierInvoiceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostSupplierInvoiceRowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SupplierInvoiceRowItem
+	JSON400      *ApiError
+	JSON404      *ApiError
+}
+
+// Status returns HTTPResponse.Status
+func (r PostSupplierInvoiceRowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostSupplierInvoiceRowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostSupplierInvoiceRowResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9983,6 +10567,58 @@ func (c *ClientWithResponses) PutJournalentryTagsWithResponse(ctx context.Contex
 	return ParsePutJournalentryTagsResponse(rsp)
 }
 
+// ListProjectsWithResponse request returning *ListProjectsResponse
+func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, companyId openapi_types.UUID, params *ListProjectsParams, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
+	rsp, err := c.ListProjects(ctx, companyId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectsResponse(rsp)
+}
+
+// PostProjectWithBodyWithResponse request with arbitrary body returning *PostProjectResponse
+func (c *ClientWithResponses) PostProjectWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostProjectResponse, error) {
+	rsp, err := c.PostProjectWithBody(ctx, companyId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostProjectResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostProjectWithResponse(ctx context.Context, companyId openapi_types.UUID, body PostProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PostProjectResponse, error) {
+	rsp, err := c.PostProject(ctx, companyId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostProjectResponse(rsp)
+}
+
+// GetProjectByIdWithResponse request returning *GetProjectByIdResponse
+func (c *ClientWithResponses) GetProjectByIdWithResponse(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetProjectByIdResponse, error) {
+	rsp, err := c.GetProjectById(ctx, companyId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetProjectByIdResponse(rsp)
+}
+
+// PutProjectWithBodyWithResponse request with arbitrary body returning *PutProjectResponse
+func (c *ClientWithResponses) PutProjectWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutProjectResponse, error) {
+	rsp, err := c.PutProjectWithBody(ctx, companyId, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutProjectResponse(rsp)
+}
+
+func (c *ClientWithResponses) PutProjectWithResponse(ctx context.Context, companyId openapi_types.UUID, projectId openapi_types.UUID, body PutProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*PutProjectResponse, error) {
+	rsp, err := c.PutProject(ctx, companyId, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutProjectResponse(rsp)
+}
+
 // DownloadSieFileWithResponse request returning *DownloadSieFileResponse
 func (c *ClientWithResponses) DownloadSieFileWithResponse(ctx context.Context, companyId openapi_types.UUID, fiscalYearId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DownloadSieFileResponse, error) {
 	rsp, err := c.DownloadSieFile(ctx, companyId, fiscalYearId, reqEditors...)
@@ -10051,6 +10687,23 @@ func (c *ClientWithResponses) PutSupplierInvoiceWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParsePutSupplierInvoiceResponse(rsp)
+}
+
+// PostSupplierInvoiceRowWithBodyWithResponse request with arbitrary body returning *PostSupplierInvoiceRowResponse
+func (c *ClientWithResponses) PostSupplierInvoiceRowWithBodyWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostSupplierInvoiceRowResponse, error) {
+	rsp, err := c.PostSupplierInvoiceRowWithBody(ctx, companyId, supplierInvoiceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSupplierInvoiceRowResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostSupplierInvoiceRowWithResponse(ctx context.Context, companyId openapi_types.UUID, supplierInvoiceId openapi_types.UUID, body PostSupplierInvoiceRowJSONRequestBody, reqEditors ...RequestEditorFn) (*PostSupplierInvoiceRowResponse, error) {
+	rsp, err := c.PostSupplierInvoiceRow(ctx, companyId, supplierInvoiceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSupplierInvoiceRowResponse(rsp)
 }
 
 // PostSupplierInvoiceUploadWithBodyWithResponse request with arbitrary body returning *PostSupplierInvoiceUploadResponse
@@ -12302,6 +12955,171 @@ func ParsePutJournalentryTagsResponse(rsp *http.Response) (*PutJournalentryTagsR
 	return response, nil
 }
 
+// ParseListProjectsResponse parses an HTTP response from a ListProjectsWithResponse call
+func ParseListProjectsResponse(rsp *http.Response) (*ListProjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListProjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CurrentPage *int32     `json:"currentPage,omitempty"`
+			Items       *[]Project `json:"items,omitempty"`
+			TotalItems  *int32     `json:"totalItems,omitempty"`
+			TotalPages  *int32     `json:"totalPages,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostProjectResponse parses an HTTP response from a PostProjectWithResponse call
+func ParsePostProjectResponse(rsp *http.Response) (*PostProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetProjectByIdResponse parses an HTTP response from a GetProjectByIdWithResponse call
+func ParseGetProjectByIdResponse(rsp *http.Response) (*GetProjectByIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetProjectByIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePutProjectResponse parses an HTTP response from a PutProjectWithResponse call
+func ParsePutProjectResponse(rsp *http.Response) (*PutProjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutProjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDownloadSieFileResponse parses an HTTP response from a DownloadSieFileWithResponse call
 func ParseDownloadSieFileResponse(rsp *http.Response) (*DownloadSieFileResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -12474,6 +13292,46 @@ func ParsePutSupplierInvoiceResponse(rsp *http.Response) (*PutSupplierInvoiceRes
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest SupplierInvoiceGet
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostSupplierInvoiceRowResponse parses an HTTP response from a PostSupplierInvoiceRowWithResponse call
+func ParsePostSupplierInvoiceRowResponse(rsp *http.Response) (*PostSupplierInvoiceRowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostSupplierInvoiceRowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SupplierInvoiceRowItem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

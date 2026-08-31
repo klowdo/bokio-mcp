@@ -2,13 +2,13 @@
 
 > Because your AI assistant shouldn't need an accounting degree to manage your books
 
-A Model Context Protocol (MCP) server that brings the power of [Bokio](https://www.bokio.se) accounting to AI assistants. Built with Go, OAuth2, and a sprinkle of Nordic efficiency.
+A Model Context Protocol (MCP) server that brings the power of [Bokio](https://www.bokio.se) accounting to AI assistants. Built with Go and a sprinkle of Nordic efficiency.
 
 ## ✨ Features
 
-### 🔐 **Secure OAuth2 Authentication**
+### 🔐 **Integration Token Authentication**
 
-Full OAuth2 flow implementation with token management and automatic refresh
+Authenticates with a Bokio integration token (Settings → Integrations → private integration), sent as a bearer token on every request
 
 ### 📊 **Complete Bokio API Coverage**
 
@@ -16,7 +16,6 @@ Full OAuth2 flow implementation with token management and automatic refresh
 - **Customers** - Full CRUD operations for customer management
 - **Journal Entries** - Accounting journal operations with reversal support
 - **File Uploads** - Document and attachment management
-- **Authentication** - Secure connection management and status checking
 
 ### 🛡️ **Read-Only Mode**
 
@@ -48,8 +47,7 @@ direnv allow
 
 ```bash
 docker run -it \
-  -e BOKIO_CLIENT_ID=your_client_id \
-  -e BOKIO_CLIENT_SECRET=your_client_secret \
+  -e BOKIO_INTEGRATION_TOKEN=your_integration_token \
   ghcr.io/klowdo/bokio-mcp:latest
 ```
 
@@ -72,34 +70,26 @@ make build
 Configure the server using environment variables:
 
 ```bash
-# Required - OAuth2 credentials
-export BOKIO_CLIENT_ID="your_client_id"
-export BOKIO_CLIENT_SECRET="your_client_secret"
+# Required - integration token
+export BOKIO_INTEGRATION_TOKEN="your_integration_token"
 
 # Optional - API configuration
 export BOKIO_BASE_URL="https://api.bokio.se/v1"      # Default
-export BOKIO_REDIRECT_URL="http://localhost:8080/callback"  # Default
 
 # Optional - Security
 export BOKIO_READ_ONLY="true"  # Enable read-only mode
 ```
 
+Create the token in the Bokio web app under **Settings → Integrations → private integration**. It is company-scoped, so use one token per company and keep it out of version control.
+
 ### Example `.env` file
 
 ```env
-BOKIO_CLIENT_ID=your_client_id_here
-BOKIO_CLIENT_SECRET=your_client_secret_here
+BOKIO_INTEGRATION_TOKEN=your_integration_token_here
 BOKIO_READ_ONLY=false
 ```
 
 ## 📚 Available MCP Tools
-
-### Authentication Tools
-
-- `bokio_authenticate` - Start OAuth2 authentication flow
-- `bokio_exchange_token` - Exchange authorization code for access token
-- `bokio_get_connections` - Get current connection information
-- `bokio_check_auth` - Check authentication status
 
 ### Invoice Tools
 
@@ -145,8 +135,7 @@ Add the Bokio MCP server to your Claude Desktop configuration file (`claude_desk
       "command": "nix",
       "args": ["run", "github:klowdo/bokio-mcp", "--"],
       "env": {
-        "BOKIO_CLIENT_ID": "your_client_id",
-        "BOKIO_CLIENT_SECRET": "your_client_secret",
+        "BOKIO_INTEGRATION_TOKEN": "your_integration_token",
         "BOKIO_READ_ONLY": "false"
       }
     }
@@ -166,9 +155,7 @@ Add the Bokio MCP server to your Claude Desktop configuration file (`claude_desk
         "--rm",
         "-i",
         "-e",
-        "BOKIO_CLIENT_ID=your_client_id",
-        "-e",
-        "BOKIO_CLIENT_SECRET=your_client_secret",
+        "BOKIO_INTEGRATION_TOKEN=your_integration_token",
         "-e",
         "BOKIO_READ_ONLY=false",
         "ghcr.io/klowdo/bokio-mcp:latest"
@@ -186,8 +173,7 @@ Add the Bokio MCP server to your Claude Desktop configuration file (`claude_desk
     "bokio": {
       "command": "/path/to/bokio-mcp",
       "env": {
-        "BOKIO_CLIENT_ID": "your_client_id",
-        "BOKIO_CLIENT_SECRET": "your_client_secret",
+        "BOKIO_INTEGRATION_TOKEN": "your_integration_token",
         "BOKIO_READ_ONLY": "false"
       }
     }
@@ -213,8 +199,7 @@ nix run .
 ```bash
 # Pull and run the latest image
 docker run -it \
-  -e BOKIO_CLIENT_ID=your_client_id \
-  -e BOKIO_CLIENT_SECRET=your_client_secret \
+  -e BOKIO_INTEGRATION_TOKEN=your_integration_token \
   -e BOKIO_READ_ONLY=false \
   ghcr.io/klowdo/bokio-mcp:latest
 
@@ -227,7 +212,7 @@ docker run -it --env-file .env ghcr.io/klowdo/bokio-mcp:latest
 ```bash
 # Build and run
 make build
-BOKIO_CLIENT_ID=your_id BOKIO_CLIENT_SECRET=your_secret ./bin/bokio-mcp
+BOKIO_INTEGRATION_TOKEN=your_integration_token ./bin/bokio-mcp
 
 # Or use the development target
 make dev
@@ -236,14 +221,6 @@ make dev
 ### Example Usage Scenarios
 
 Once configured with your MCP client (like Claude Desktop), you can interact with Bokio using natural language:
-
-#### Authentication Flow
-
-```
-"Please authenticate with Bokio and show me the connection status"
-```
-
-The assistant will use `bokio_authenticate` to start OAuth2 flow and `bokio_check_auth` to verify connection.
 
 #### Invoice Management
 
@@ -294,8 +271,7 @@ For safe exploration and analysis, enable read-only mode:
       "command": "nix",
       "args": ["run", "github:klowdo/bokio-mcp", "--"],
       "env": {
-        "BOKIO_CLIENT_ID": "your_client_id",
-        "BOKIO_CLIENT_SECRET": "your_client_secret",
+        "BOKIO_INTEGRATION_TOKEN": "your_integration_token",
         "BOKIO_READ_ONLY": "true"
       }
     }
@@ -306,7 +282,6 @@ For safe exploration and analysis, enable read-only mode:
 In read-only mode, all write operations (`create_*`, `update_*`, `delete_*`) are disabled, but you can still:
 
 - List and view invoices, customers, and journal entries
-- Check authentication status
 - Download and view uploaded files
 - Generate reports and analysis
 
@@ -352,7 +327,7 @@ make help
 bokio-mcp/
 ├── main.go              # Entry point and server setup
 ├── bokio/
-│   ├── client.go        # Bokio API client with OAuth2
+│   ├── auth_client.go   # Bokio API client with integration token auth
 │   └── types.go         # API type definitions
 ├── tools/
 │   ├── auth.go          # Authentication tools
@@ -433,7 +408,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Bokio](https://www.bokio.se) for their excellent accounting API
 - [Anthropic](https://anthropic.com) for the Model Context Protocol specification
-- The Go community for excellent OAuth2 and HTTP libraries
+- The Go community for excellent HTTP libraries
 
 ## 🔗 Links
 

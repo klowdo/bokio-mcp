@@ -2,8 +2,8 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -36,46 +36,67 @@ func toolError(format string, args ...any) *mcp.CallToolResult {
 	}
 }
 
-func resolveInvoiceRef(companyID, invoiceID string) (uuid.UUID, uuid.UUID, *mcp.CallToolResult) {
+func resolveCompanyUUID(companyID string) (uuid.UUID, *mcp.CallToolResult) {
 	if companyID == "" {
 		companyID = os.Getenv("BOKIO_COMPANY_ID")
 	}
 	if companyID == "" {
-		return uuid.Nil, uuid.Nil, toolError("Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)")
+		return uuid.Nil, toolError("Company ID is required (provide in company_id parameter or BOKIO_COMPANY_ID env var)")
 	}
 
 	companyUUID, err := uuid.Parse(companyID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, toolError("Invalid company ID format: %v", err)
+		return uuid.Nil, toolError("Invalid company ID format: %v", err)
 	}
 
-	invoiceUUID, err := uuid.Parse(invoiceID)
+	return companyUUID, nil
+}
+
+func resolveEntityRef(companyID, entityID, label string) (uuid.UUID, uuid.UUID, *mcp.CallToolResult) {
+	companyUUID, errResult := resolveCompanyUUID(companyID)
+	if errResult != nil {
+		return uuid.Nil, uuid.Nil, errResult
+	}
+
+	if entityID == "" {
+		return uuid.Nil, uuid.Nil, toolError("%s ID is required", label)
+	}
+
+	entityUUID, err := uuid.Parse(entityID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, toolError("Invalid invoice ID format: %v", err)
+		return uuid.Nil, uuid.Nil, toolError("Invalid %s ID format: %v", label, err)
 	}
 
-	return companyUUID, invoiceUUID, nil
+	return companyUUID, entityUUID, nil
+}
+
+func resolveInvoiceRef(companyID, invoiceID string) (uuid.UUID, uuid.UUID, *mcp.CallToolResult) {
+	return resolveEntityRef(companyID, invoiceID, "invoice")
 }
 
 func renderAPIResponse(label string, resp *http.Response, err error) (*mcp.CallToolResult, any, error) {
 	if err != nil {
-		return toolError("Failed to retrieve %s: %v", label, err), nil, nil
+		return toolError("Failed to %s: %v", label, err), nil, nil
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return toolError("API returned status %d", resp.StatusCode), nil, nil
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return toolError("Failed to read response body: %v", readErr), nil, nil
 	}
 
-	var responseData json.RawMessage
-	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-		return toolError("Failed to decode response: %v", err), nil, nil
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return toolError("API returned status %d: %s", resp.StatusCode, body), nil, nil
+	}
+
+	if len(body) == 0 {
+		body = []byte("(empty response body)")
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: fmt.Sprintf("✅ Successfully retrieved %s\n\nStatus: %d\nResponse: %s", label, resp.StatusCode, responseData),
+				Text: fmt.Sprintf("✅ Successfully completed: %s\n\nStatus: %d\nResponse: %s", label, resp.StatusCode, body),
 			},
 		},
 	}, nil, nil
@@ -97,7 +118,7 @@ func RegisterPaymentTools(server *mcp.Server, client *bokio.AuthClient) error {
 			PageSize: args.PageSize,
 		})
 
-		return renderAPIResponse("invoice payments", resp, err)
+		return renderAPIResponse("list invoice payments", resp, err)
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
@@ -114,7 +135,7 @@ func RegisterPaymentTools(server *mcp.Server, client *bokio.AuthClient) error {
 			PageSize: args.PageSize,
 		})
 
-		return renderAPIResponse("invoice settlements", resp, err)
+		return renderAPIResponse("list invoice settlements", resp, err)
 	})
 
 	return nil

@@ -87,6 +87,16 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to register payment tools: %w", err)
 	}
 
+	// Register ledger tools (fiscal years, SIE, chart of accounts, bank payments, journal entries)
+	if err := tools.RegisterLedgerTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register ledger tools: %w", err)
+	}
+
+	// Register supplier and supplier invoice tools using generated clients
+	if err := tools.RegisterSupplierTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register supplier tools: %w", err)
+	}
+
 	// Register upload management tools using generated clients
 	if err := tools.RegisterUploadTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register upload tools: %w", err)

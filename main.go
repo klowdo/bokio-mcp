@@ -82,6 +82,11 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to register invoice tools: %w", err)
 	}
 
+	// Register invoice payment and settlement tools using generated clients
+	if err := tools.RegisterPaymentTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register payment tools: %w", err)
+	}
+
 	// Register upload management tools using generated clients
 	if err := tools.RegisterUploadTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register upload tools: %w", err)

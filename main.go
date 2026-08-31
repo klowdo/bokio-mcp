@@ -97,6 +97,40 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to register supplier tools: %w", err)
 	}
 
+	// Register invoice document, attachment, payment and settlement tools using generated clients
+	if err := tools.RegisterInvoiceDocumentTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register invoice document, attachment, payment and settlement tools: %w", err)
+	}
+
+	if err := tools.RegisterInvoiceAttachmentUploadTool(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register invoice attachment upload tool: %w", err)
+	}
+
+	// Register credit note tools using generated clients
+	if err := tools.RegisterCreditNoteTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register credit note tools: %w", err)
+	}
+
+	// Register tag group and tagging tools using generated clients
+	if err := tools.RegisterTagTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register tag group and tagging tools: %w", err)
+	}
+
+	// Register company information, comment and connection tools using generated clients
+	if err := tools.RegisterCompanyInfoTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register company information, comment and connection tools: %w", err)
+	}
+
+	// Register bank payment tools using generated clients
+	if err := tools.RegisterBankPaymentTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register bank payment tools: %w", err)
+	}
+
+	// Register entity update and delete tools using generated clients
+	if err := tools.RegisterEntityDeleteTools(server, bokioClient); err != nil {
+		return fmt.Errorf("failed to register entity update and delete tools: %w", err)
+	}
+
 	// Register upload management tools using generated clients
 	if err := tools.RegisterUploadTools(server, bokioClient); err != nil {
 		return fmt.Errorf("failed to register upload tools: %w", err)

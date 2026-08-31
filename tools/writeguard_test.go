@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -215,4 +218,33 @@ func TestReadToolsReturnAPIContent(t *testing.T) {
 	}
 
 	assert.Len(t, requestedPaths, len(tests))
+}
+
+func TestEveryMutatingToolChecksReadOnly(t *testing.T) {
+	mutatingCall := regexp.MustCompile(`(?:Company|General)Client\.(Post|Put|Delete|Reverse|Record|Publish|Update|AddUpload)\w*\(`)
+	toolName := regexp.MustCompile(`Name:\s+"(bokio_\w+)"`)
+
+	paths, err := filepath.Glob("*.go")
+	require.NoError(t, err)
+
+	var unguarded []string
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+
+		content, err := os.ReadFile(path)
+		require.NoError(t, err)
+
+		for _, block := range strings.Split(string(content), "mcp.AddTool(")[1:] {
+			if !mutatingCall.MatchString(block) || strings.Contains(block, "client.GetConfig().ReadOnly") {
+				continue
+			}
+			name := toolName.FindStringSubmatch(block)
+			require.NotNil(t, name, "tool block in %s has no name", path)
+			unguarded = append(unguarded, name[1])
+		}
+	}
+
+	require.Emptyf(t, unguarded, "write tools missing the read-only guard: %s", strings.Join(unguarded, ", "))
 }

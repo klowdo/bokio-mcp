@@ -26,6 +26,13 @@ func TestToolSchemasAreObjects(t *testing.T) {
 	require.NoError(t, RegisterPaymentTools(server, client))
 	require.NoError(t, RegisterLedgerTools(server, client))
 	require.NoError(t, RegisterSupplierTools(server, client))
+	require.NoError(t, RegisterInvoiceDocumentTools(server, client))
+	require.NoError(t, RegisterInvoiceAttachmentUploadTool(server, client))
+	require.NoError(t, RegisterCreditNoteTools(server, client))
+	require.NoError(t, RegisterTagTools(server, client))
+	require.NoError(t, RegisterCompanyInfoTools(server, client))
+	require.NoError(t, RegisterBankPaymentTools(server, client))
+	require.NoError(t, RegisterEntityDeleteTools(server, client))
 
 	ctx := context.Background()
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()

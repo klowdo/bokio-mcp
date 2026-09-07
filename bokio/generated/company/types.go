@@ -587,6 +587,24 @@ func (e PlusgiroPaymentDetailsType) Valid() bool {
 	}
 }
 
+// Defines values for ProjectStatus.
+const (
+	Active   ProjectStatus = "active"
+	Archived ProjectStatus = "archived"
+)
+
+// Valid indicates whether the value is a known member of the ProjectStatus enum.
+func (e ProjectStatus) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Archived:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SalesInvoiceItemItemType.
 const (
 	SalesInvoiceItemItemTypeSalesItem SalesInvoiceItemItemType = "salesItem"
@@ -815,6 +833,87 @@ func (e SalesItemUnitType) Valid() bool {
 	}
 }
 
+// Defines values for SupplierInvoiceRowItemUnitType.
+const (
+	Centimeter   SupplierInvoiceRowItemUnitType = "centimeter"
+	Day          SupplierInvoiceRowItemUnitType = "day"
+	Gigabyte     SupplierInvoiceRowItemUnitType = "gigabyte"
+	Gram         SupplierInvoiceRowItemUnitType = "gram"
+	Hectar       SupplierInvoiceRowItemUnitType = "hectar"
+	Hour         SupplierInvoiceRowItemUnitType = "hour"
+	Kilogram     SupplierInvoiceRowItemUnitType = "kilogram"
+	Kilometer    SupplierInvoiceRowItemUnitType = "kilometer"
+	Liter        SupplierInvoiceRowItemUnitType = "liter"
+	Megabyte     SupplierInvoiceRowItemUnitType = "megabyte"
+	Meter        SupplierInvoiceRowItemUnitType = "meter"
+	MeterCubic   SupplierInvoiceRowItemUnitType = "meterCubic"
+	MeterSquared SupplierInvoiceRowItemUnitType = "meterSquared"
+	Mile         SupplierInvoiceRowItemUnitType = "mile"
+	Millimeter   SupplierInvoiceRowItemUnitType = "millimeter"
+	Minute       SupplierInvoiceRowItemUnitType = "minute"
+	Month        SupplierInvoiceRowItemUnitType = "month"
+	Piece        SupplierInvoiceRowItemUnitType = "piece"
+	Ton          SupplierInvoiceRowItemUnitType = "ton"
+	Unspecified  SupplierInvoiceRowItemUnitType = "unspecified"
+	Week         SupplierInvoiceRowItemUnitType = "week"
+	Words        SupplierInvoiceRowItemUnitType = "words"
+	Year         SupplierInvoiceRowItemUnitType = "year"
+)
+
+// Valid indicates whether the value is a known member of the SupplierInvoiceRowItemUnitType enum.
+func (e SupplierInvoiceRowItemUnitType) Valid() bool {
+	switch e {
+	case Centimeter:
+		return true
+	case Day:
+		return true
+	case Gigabyte:
+		return true
+	case Gram:
+		return true
+	case Hectar:
+		return true
+	case Hour:
+		return true
+	case Kilogram:
+		return true
+	case Kilometer:
+		return true
+	case Liter:
+		return true
+	case Megabyte:
+		return true
+	case Meter:
+		return true
+	case MeterCubic:
+		return true
+	case MeterSquared:
+		return true
+	case Mile:
+		return true
+	case Millimeter:
+		return true
+	case Minute:
+		return true
+	case Month:
+		return true
+	case Piece:
+		return true
+	case Ton:
+		return true
+	case Unspecified:
+		return true
+	case Week:
+		return true
+	case Words:
+		return true
+	case Year:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TransferPaymentDetailsType.
 const (
 	TransferPaymentDetailsTypeTransfer TransferPaymentDetailsType = "transfer"
@@ -1015,6 +1114,13 @@ type CompanyInformation_Address struct {
 // CompanyInformationCompanyType Company type of the company
 type CompanyInformationCompanyType string
 
+// CostCenterRef Reference to a cost center tag value. Should be a valid dimension 1 tag value.
+// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+type CostCenterRef struct {
+	TagId   *openapi_types.UUID `json:"tagId,omitempty"`
+	TagName *string             `json:"tagName,omitempty"`
+}
+
 // CreditNote defines model for creditNote.
 type CreditNote struct {
 	AttachmentRefs *[]struct {
@@ -1036,12 +1142,9 @@ type CreditNote struct {
 	CreditDate        openapi_types.Date `json:"creditDate"`
 
 	// Currency ISO 4217 currency code
-	Currency     string   `json:"currency"`
-	CurrencyRate *float64 `json:"currencyRate,omitempty"`
-	CustomerRef  *struct {
-		Id   *openapi_types.UUID `json:"id,omitempty"`
-		Name *string             `json:"name,omitempty"`
-	} `json:"customerRef,omitempty"`
+	Currency        string                      `json:"currency"`
+	CurrencyRate    *float64                    `json:"currencyRate,omitempty"`
+	CustomerRef     *CustomerRef                `json:"customerRef,omitempty"`
 	DeliveryAddress *CreditNote_DeliveryAddress `json:"deliveryAddress,omitempty"`
 	DueDate         openapi_types.Date          `json:"dueDate"`
 
@@ -1079,9 +1182,10 @@ type CreditNote struct {
 	PublishedDateTime *time.Time `json:"publishedDateTime,omitempty"`
 
 	// Status The status of the credit note
-	Status      *CreditNoteStatus `json:"status,omitempty"`
-	TotalAmount *float64          `json:"totalAmount,omitempty"`
-	TotalTax    *float64          `json:"totalTax,omitempty"`
+	Status       *CreditNoteStatus    `json:"status,omitempty"`
+	TaxReduction *InvoiceTaxReduction `json:"taxReduction,omitempty"`
+	TotalAmount  *float64             `json:"totalAmount,omitempty"`
+	TotalTax     *float64             `json:"totalTax,omitempty"`
 }
 
 // CreditNote_BillingAddress defines model for CreditNote.BillingAddress.
@@ -1138,9 +1242,21 @@ type CustomerLanguage string
 // CustomerType defines model for Customer.Type.
 type CustomerType string
 
+// CustomerRef Reference to a customer
+type CustomerRef struct {
+	// Id Unique identifier of the customer
+	Id *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name Name of the customer
+	Name *string `json:"name,omitempty"`
+}
+
 // DescriptionOnlyInvoiceItem defines model for descriptionOnlyInvoiceItem.
 type DescriptionOnlyInvoiceItem struct {
-	Description string `json:"description"`
+	// CostCenterRef Reference to a cost center tag value. Should be a valid dimension 1 tag value.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	CostCenterRef *CostCenterRef `json:"costCenterRef,omitempty"`
+	Description   string         `json:"description"`
 
 	// Id Should not be set for new items
 	Id *int64 `json:"id,omitempty"`
@@ -1153,6 +1269,10 @@ type DescriptionOnlyInvoiceItem struct {
 		Id *openapi_types.UUID `json:"id,omitempty"`
 	} `json:"itemRef,omitempty"`
 	ItemType DescriptionOnlyInvoiceItemItemType `json:"itemType"`
+
+	// ProjectRef Reference to a project.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	ProjectRef *ProjectRef `json:"projectRef,omitempty"`
 }
 
 // DescriptionOnlyInvoiceItemItemType defines model for DescriptionOnlyInvoiceItem.ItemType.
@@ -1230,12 +1350,9 @@ type Invoice struct {
 	} `json:"creditNoteRefs,omitempty"`
 
 	// Currency ISO 4217 currency code
-	Currency     *string  `json:"currency,omitempty"`
-	CurrencyRate *float64 `json:"currencyRate,omitempty"`
-	CustomerRef  *struct {
-		Id   *openapi_types.UUID `json:"id,omitempty"`
-		Name *string             `json:"name,omitempty"`
-	} `json:"customerRef,omitempty"`
+	Currency        *string                  `json:"currency,omitempty"`
+	CurrencyRate    *float64                 `json:"currencyRate,omitempty"`
+	CustomerRef     *CustomerRef             `json:"customerRef,omitempty"`
 	DeliveryAddress *Invoice_DeliveryAddress `json:"deliveryAddress,omitempty"`
 
 	// DueDate The due date for the invoice. Optional — when omitted, it is automatically calculated using the fallback chain: customer payment terms → company payment terms → 30 days from the invoice date.
@@ -1620,11 +1737,80 @@ type PlusgiroPaymentDetails struct {
 // PlusgiroPaymentDetailsType defines model for PlusgiroPaymentDetails.Type.
 type PlusgiroPaymentDetailsType string
 
+// Project defines model for project.
+type Project struct {
+	// CustomerRef The customer this project belongs to, if any
+	CustomerRef *CustomerRef `json:"customerRef,omitempty"`
+
+	// EndDate The date the project ends (yyyy-MM-dd)
+	EndDate *openapi_types.Date `json:"endDate,omitempty"`
+
+	// Id Unique identifier of the project
+	Id *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name Name of the project
+	Name string `json:"name"`
+
+	// ProjectNumber The project number, unique per company. Used as the dimension 6 tag value.
+	ProjectNumber string `json:"projectNumber"`
+
+	// StartDate The date the project starts (yyyy-MM-dd)
+	StartDate *openapi_types.Date `json:"startDate,omitempty"`
+
+	// Status The lifecycle status of the project
+	Status *ProjectStatus `json:"status,omitempty"`
+
+	// TagRef The dimension 6 tag value backing this project
+	TagRef *ProjectTagRef `json:"tagRef,omitempty"`
+}
+
+// ProjectStatus The lifecycle status of the project
+type ProjectStatus string
+
+// ProjectRef Reference to a project.
+// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+type ProjectRef struct {
+	Id            *openapi_types.UUID `json:"id,omitempty"`
+	ProjectName   *string             `json:"projectName,omitempty"`
+	ProjectNumber *string             `json:"projectNumber,omitempty"`
+}
+
+// ProjectTagRef defines model for projectTagRef.
+type ProjectTagRef struct {
+	// Id Unique identifier of the tag value
+	Id *openapi_types.UUID `json:"id,omitempty"`
+
+	// Name The tag value (the project number)
+	Name *string `json:"name,omitempty"`
+}
+
+// ProjectWrite defines model for projectWrite.
+type ProjectWrite struct {
+	// CustomerRef The customer this project belongs to, if any
+	CustomerRef *CustomerRef `json:"customerRef,omitempty"`
+
+	// EndDate The date the project ends (yyyy-MM-dd)
+	EndDate *openapi_types.Date `json:"endDate,omitempty"`
+
+	// Name Name of the project
+	Name string `json:"name"`
+
+	// ProjectNumber The project number, unique per company. Used as the dimension 6 tag value.
+	ProjectNumber string `json:"projectNumber"`
+
+	// StartDate The date the project starts (yyyy-MM-dd)
+	StartDate *openapi_types.Date `json:"startDate,omitempty"`
+}
+
 // SalesInvoiceItem defines model for salesInvoiceItem.
 type SalesInvoiceItem struct {
 	// BookkeepingAccountNumber Use the `bookkeepingAccountNumber` field in the line items to specify an accounting account other than the account that would be automatically be selected based on the item productType, taxRate, customer and company settings. Accounts that would be automatically selected cannot be set on this field.
 	BookkeepingAccountNumber *int32 `json:"bookkeepingAccountNumber,omitempty"`
-	Description              string `json:"description"`
+
+	// CostCenterRef Reference to a cost center tag value. Should be a valid dimension 1 tag value.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	CostCenterRef *CostCenterRef `json:"costCenterRef,omitempty"`
+	Description   string         `json:"description"`
 
 	// Id Should not be set for new items
 	Id *int64 `json:"id,omitempty"`
@@ -1638,8 +1824,12 @@ type SalesInvoiceItem struct {
 	} `json:"itemRef,omitempty"`
 	ItemType    SalesInvoiceItemItemType    `json:"itemType"`
 	ProductType SalesInvoiceItemProductType `json:"productType"`
-	Quantity    float64                     `json:"quantity"`
-	TaxRate     float64                     `json:"taxRate"`
+
+	// ProjectRef Reference to a project.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	ProjectRef *ProjectRef `json:"projectRef,omitempty"`
+	Quantity   float64     `json:"quantity"`
+	TaxRate    float64     `json:"taxRate"`
 
 	// TaxReduction tax reduction categorization for this line item. When the invoice has a taxReduction, each service line item should specify its job type. The type must match the invoice-level taxReduction type.
 	TaxReduction *LineItemTaxReduction     `json:"taxReduction,omitempty"`
@@ -1728,7 +1918,11 @@ type SupplierInvoiceCreate struct {
 	DueDate       openapi_types.Date `json:"dueDate"`
 	InvoiceDate   openapi_types.Date `json:"invoiceDate"`
 	InvoiceNumber *string            `json:"invoiceNumber,omitempty"`
-	SupplierRef   struct {
+
+	// Rows Rows for the supplier invoice.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	Rows        *[]SupplierInvoiceRowItem `json:"rows,omitempty"`
+	SupplierRef struct {
 		Id openapi_types.UUID `json:"id"`
 	} `json:"supplierRef"`
 	TotalAmount float64    `json:"totalAmount"`
@@ -1747,7 +1941,11 @@ type SupplierInvoiceGet struct {
 		Id *openapi_types.UUID `json:"id,omitempty"`
 	} `json:"journalEntryRef,omitempty"`
 	RemainingAmount *float64 `json:"remainingAmount,omitempty"`
-	SupplierRef     struct {
+
+	// Rows Rows for the supplier invoice.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	Rows        *[]SupplierInvoiceRowItem `json:"rows,omitempty"`
+	SupplierRef struct {
 		Id   openapi_types.UUID `json:"id"`
 		Name *string            `json:"name,omitempty"`
 	} `json:"supplierRef"`
@@ -1755,12 +1953,38 @@ type SupplierInvoiceGet struct {
 	UploadRefs  *[]UploadRef `json:"uploadRefs,omitempty"`
 }
 
+// SupplierInvoiceRowItem defines model for supplierInvoiceRowItem.
+type SupplierInvoiceRowItem struct {
+	// CostCenterRef Reference to a cost center tag value. Should be a valid dimension 1 tag value.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	CostCenterRef *CostCenterRef `json:"costCenterRef,omitempty"`
+	Description   string         `json:"description"`
+
+	// Id Server-generated identifier. On update, include `id` to match an existing row; omit it to add a new row.
+	Id *openapi_types.UUID `json:"id,omitempty"`
+
+	// ProjectRef Reference to a project.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	ProjectRef *ProjectRef                     `json:"projectRef,omitempty"`
+	Quantity   *float64                        `json:"quantity,omitempty"`
+	TaxRate    *float64                        `json:"taxRate,omitempty"`
+	UnitPrice  float64                         `json:"unitPrice"`
+	UnitType   *SupplierInvoiceRowItemUnitType `json:"unitType,omitempty"`
+}
+
+// SupplierInvoiceRowItemUnitType defines model for SupplierInvoiceRowItem.UnitType.
+type SupplierInvoiceRowItemUnitType string
+
 // SupplierInvoiceUpdate defines model for supplierInvoiceUpdate.
 type SupplierInvoiceUpdate struct {
 	DueDate       openapi_types.Date `json:"dueDate"`
 	InvoiceDate   openapi_types.Date `json:"invoiceDate"`
 	InvoiceNumber *string            `json:"invoiceNumber,omitempty"`
-	SupplierRef   struct {
+
+	// Rows Rows for the supplier invoice. Include `id` on a row to update it in place; rows without `id` are added as new. Existing rows not included in the array are removed.
+	// **Preview:** This field is in preview and may change or be removed before general availability. [Read the full preview policy](/reference/versioning#preview)
+	Rows        *[]SupplierInvoiceRowItem `json:"rows,omitempty"`
+	SupplierRef struct {
 		Id openapi_types.UUID `json:"id"`
 	} `json:"supplierRef"`
 	TotalAmount float64 `json:"totalAmount"`
@@ -1936,7 +2160,7 @@ type ListCreditNotesV1Params struct {
 	// | currency             | string      |
 	// | totalAmount          | number      |
 	// | status               | string      |
-	// | invoiceDate          | date        |
+	// | creditDate           | date        |
 	// | dueDate              | date        |
 	// | metadata             | string      |
 	Query *string `form:"query,omitempty" json:"query,omitempty"`
@@ -2167,6 +2391,24 @@ type GetJournalentryParams struct {
 	TagId *openapi_types.UUID `form:"tagId,omitempty" json:"tagId,omitempty"`
 }
 
+// ListProjectsParams defines parameters for ListProjects.
+type ListProjectsParams struct {
+	// Page Page number for pagination
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+
+	// PageSize Number of items per page for pagination
+	PageSize *int32 `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+
+	// Query Optional query to filter the data set with supported fields listed below and [available operations](filtering).
+	//
+	// | Field         | Type        |
+	// | ------------- | ----------- |
+	// | name          | string      |
+	// | projectNumber | string      |
+	// | status        | string      |
+	Query *string `form:"query,omitempty" json:"query,omitempty"`
+}
+
 // GetSupplierInvoicesParams defines parameters for GetSupplierInvoices.
 type GetSupplierInvoicesParams struct {
 	// Page Page number
@@ -2309,11 +2551,20 @@ type PutJournalEntryCommentJSONRequestBody = JournalEntryCommentWrite
 // PutJournalentryTagsJSONRequestBody defines body for PutJournalentryTags for application/json ContentType.
 type PutJournalentryTagsJSONRequestBody = JournalEntryTags
 
+// PostProjectJSONRequestBody defines body for PostProject for application/json ContentType.
+type PostProjectJSONRequestBody = ProjectWrite
+
+// PutProjectJSONRequestBody defines body for PutProject for application/json ContentType.
+type PutProjectJSONRequestBody = ProjectWrite
+
 // PostSupplierInvoiceJSONRequestBody defines body for PostSupplierInvoice for application/json ContentType.
 type PostSupplierInvoiceJSONRequestBody = SupplierInvoiceCreate
 
 // PutSupplierInvoiceJSONRequestBody defines body for PutSupplierInvoice for application/json ContentType.
 type PutSupplierInvoiceJSONRequestBody = SupplierInvoiceUpdate
+
+// PostSupplierInvoiceRowJSONRequestBody defines body for PostSupplierInvoiceRow for application/json ContentType.
+type PostSupplierInvoiceRowJSONRequestBody = SupplierInvoiceRowItem
 
 // PostSupplierInvoiceUploadJSONRequestBody defines body for PostSupplierInvoiceUpload for application/json ContentType.
 type PostSupplierInvoiceUploadJSONRequestBody = UploadRef
